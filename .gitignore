@@ -2,3 +2,6 @@ setup_dosoft.iss
 settings.json
 build_dosoft.cmd
 __pychache__
+build
+dist
+main.spec

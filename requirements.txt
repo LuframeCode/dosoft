@@ -1,0 +1,7 @@
+customtkinter
+keyboard
+pypiwin32
+pystray
+pygame-ce
+Pillow
+requests

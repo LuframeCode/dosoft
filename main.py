@@ -15,78 +15,134 @@ import pystray
 from pystray import MenuItem as item
 import asyncio
 import requests
-from tkinter import messagebox 
+from tkinter import messagebox
 
-# --- FORCAGE DU DPI AWARENESS (Règle les soucis 4K / Zoom Windows) ---
-try: ctypes.windll.shcore.SetProcessDpiAwareness(2)
-except:
-    try: ctypes.windll.user32.SetProcessDPIAware()
-    except: pass
-
-# --- FORCAGE DU CLAVIER EN AZERTY FRANCAIS (0x040C) ---
 try:
-    ctypes.windll.user32.LoadKeyboardLayoutW("0000040C", 1 | 0x00000100)
-except: pass
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except:
+        pass
 
 try:
     from winrt.windows.ui.notifications.management import UserNotificationListener
     from winrt.windows.ui.notifications import NotificationKinds
     WINSDK_AVAILABLE = True
-except ImportError:
+except Exception as e:
     WINSDK_AVAILABLE = False
+    UserNotificationListener = None
+    NotificationKinds = None
+    print(f"[WARN] WinRT notifications disabled: {e}")
 
 from config_manager import Config
 from logic import DofusLogic
 from gui import OrganizerGUI
 from radial_menu import RadialMenu
+from i18n import tr
 
-# --- LE DICTIONNAIRE MAGIQUE DES SIGNAUX ÉLECTRIQUES (AZERTY) ---
-AZERTY_TO_SCAN = {
-    'a': 16, 'z': 17, 'e': 18, 'r': 19, 't': 20, 'y': 21, 'u': 22, 'i': 23, 'o': 24, 'p': 25,
-    'q': 30, 's': 31, 'd': 32, 'f': 33, 'g': 34, 'h': 35, 'j': 36, 'k': 37, 'l': 38, 'm': 39,
-    'w': 44, 'x': 45, 'c': 46, 'v': 47, 'b': 48, 'n': 49,
-    '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10, '0': 11,
-    'f1': 59, 'f2': 60, 'f3': 61, 'f4': 62, 'f5': 63, 'f6': 64, 'f7': 65, 'f8': 66, 'f9': 67, 'f10': 68, 'f11': 87, 'f12': 88,
-    'tab': 15, 'enter': 28, 'space': 57, 'esc': 1, 'backspace': 14,
-    '²': 41, '&': 2, 'é': 3, '"': 4, "'": 5, '(': 6, '-': 7, 'è': 8, '_': 9, 'ç': 10, 'à': 11, ')': 12, '=': 13,
-    'num 1': 79, 'num 2': 80, 'num 3': 81, 'num 4': 75, 'num 5': 76, 'num 6': 77, 'num 7': 71, 'num 8': 72, 'num 9': 73, 'num 0': 82,
-}
+def t_cfg(config, text, **kwargs):
+    return tr(config, text, **kwargs)
+
+from keymap import (
+    MODIFIER_TOKENS,
+    MOUSE_TOKENS,
+    get_scan_code_for_key,
+    normalize_key_name,
+)
+
 
 class OrganizerApp:
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, config=None):
+        self.config = config or Config()
         self.logic = DofusLogic(self.config)
         self.gui = OrganizerGUI(self)
         self.current_idx = 0
-        self.hotkey_actions = {} 
+        self.hotkey_actions = {}
         self.mouse_hotkeys = {}
         self.mouse_states = {}
-        
-        self.radial_focus = RadialMenu(self.gui.root, self.on_radial_focus_select, accent_color="#2ecc71", hover_color="#27ae60", center_icon_path="skin/character.png")
-        
+
+        self.radial_focus = RadialMenu(
+            self.gui.root,
+            self.on_radial_focus_select,
+            accent_color="#2ecc71",
+            hover_color="#27ae60",
+            center_icon_path="skin/character.png"
+        )
+
         saved_vol = self.config.data.get("volume_level", 50) / 100.0
         self.radial_focus.set_base_volume(saved_vol)
-        
+
         threading.Thread(target=self.background_listener, daemon=True).start()
-        
+
         self.setup_hotkeys()
         self.refresh()
         self.start_notification_listener()
         self.setup_system_tray()
-        
+
         self.gui.root.after(1000, self.check_conflicting_software)
 
         if not self.config.data.get("tutorial_done", False):
             self.gui.root.after(800, self.gui.launch_tutorial)
+
+    def restart_app(self):
+        try:
+            if hasattr(self, "tray_icon"):
+                self.tray_icon.stop()
+        except Exception:
+            pass
+
+        try:
+            self.gui.root.withdraw()
+            self.gui.root.update_idletasks()
+            self.gui.root.destroy()
+        except Exception:
+            pass
+
+        if getattr(sys, "frozen", False):
+            os.execv(sys.executable, [sys.executable, *sys.argv[1:]])
+        else:
+            script = os.path.abspath(sys.argv[0])
+            os.execv(sys.executable, [sys.executable, script, *sys.argv[1:]])
+
+    def _t(self, text, **kwargs):
+        return tr(self.config, text, **kwargs)
+
+    def _layout(self):
+        return self.config.data.get("keyboard_layout", "qwerty")
+    
+    def _apply_advanced_modifier(self, bind_str):
+        if not bind_str:
+            return ""
+
+        parts = [normalize_key_name(p) for p in str(bind_str).split("+") if p]
+        if not parts:
+            return ""
+
+        # remove qualquer modificador salvo no bind antigo
+        base_parts = [p for p in parts if p not in MODIFIER_TOKENS]
+        if not base_parts:
+            return ""
+
+        mod = normalize_key_name(self.config.data.get("advanced_bind_modifier", "ctrl"))
+
+        # aceita configs antigas traduzidas
+        if mod in {"", "none", "aucun", "nenhum"}:
+            return "+".join(base_parts)
+
+        if mod not in MODIFIER_TOKENS:
+            mod = "ctrl"
     
     def setup_system_tray(self):
-        icon_path = "logo.ico" 
-        try: image = Image.open(icon_path)
-        except: image = Image.new('RGB', (64, 64), color=(44, 62, 80))
+        icon_path = "logo.ico"
+        try:
+            image = Image.open(icon_path)
+        except:
+            image = Image.new("RGB", (64, 64), color=(44, 62, 80))
 
         menu = pystray.Menu(
-            item('Afficher/Cacher', self.toggle_from_tray, default=True),
-            item('Quitter', self.quit_from_tray)
+            item(self._t("Afficher/Cacher"), self.toggle_from_tray, default=True),
+            item(self._t("Quitter"), self.quit_from_tray),
         )
         self.tray_icon = pystray.Icon("dosoft_tray", image, "DOSOFT", menu)
         self.tray_icon.run_detached()
@@ -171,21 +227,27 @@ class OrganizerApp:
         popup.grab_set()
 
     def get_vk(self, key_str):
-        key_str = key_str.lower().strip()
+        key_str = normalize_key_name(key_str)
         mapping = {
-            "alt": win32con.VK_MENU, "ctrl": win32con.VK_CONTROL, "shift": win32con.VK_SHIFT,
-            "left_click": 0x01, "right_click": 0x02, "middle_click": 0x04,
-            "mouse4": 0x05, "mouse5": 0x06
+            "alt": win32con.VK_MENU,
+            "ctrl": win32con.VK_CONTROL,
+            "shift": win32con.VK_SHIFT,
+            "left_click": 0x01,
+            "right_click": 0x02,
+            "middle_click": 0x04,
+            "mouse4": 0x05,
+            "mouse5": 0x06,
         }
-        if key_str in mapping: return mapping[key_str]
-        
-        scan_code = AZERTY_TO_SCAN.get(key_str)
+        if key_str in mapping:
+            return mapping[key_str]
+        scan_code = get_scan_code_for_key(self._layout(), key_str)
         if scan_code is not None:
-            vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1) 
-            if vk: return vk
-            
-        if len(key_str) == 1: return ord(key_str.upper())
-        if key_str.startswith('f') and key_str[1:].isdigit():
+            vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1)
+            if vk:
+                return vk
+        if len(key_str) == 1:
+            return ord(key_str.upper())
+        if key_str.startswith("f") and key_str[1:].isdigit():
             return 0x6F + int(key_str[1:])
         return None
 
@@ -275,22 +337,32 @@ class OrganizerApp:
                 break
 
     def register_action(self, hk_str, func):
-        if not hk_str: return
+        if not hk_str:
+            return
+
         hk_str = hk_str.lower().strip()
-        
-        if 'click' in hk_str or 'mouse' in hk_str:
+
+        if "click" in hk_str or "mouse" in hk_str:
             self.mouse_hotkeys[hk_str] = func
             return
-            
-        parts = hk_str.split('+')
+
+        parts = [normalize_key_name(p) for p in hk_str.split("+") if p]
         mods = set()
         main_scan = None
+
         for p in parts:
-            if p in ['ctrl', 'alt', 'shift']: mods.add(p)
-            elif p in AZERTY_TO_SCAN: main_scan = AZERTY_TO_SCAN[p]
-            else: 
-                try: main_scan = keyboard.key_to_scan_codes(p)[0]
-                except: pass
+            if p in MODIFIER_TOKENS:
+                mods.add(p)
+            elif p in MOUSE_TOKENS:
+                self.mouse_hotkeys[hk_str] = func
+                return
+            else:
+                main_scan = get_scan_code_for_key(self._layout(), p)
+                if main_scan is None:
+                    try:
+                        main_scan = keyboard.key_to_scan_codes(p)[0]
+                    except Exception:
+                        pass
         if main_scan is not None:
             self.hotkey_actions[(frozenset(mods), main_scan)] = func
 
@@ -344,16 +416,26 @@ class OrganizerApp:
         
         # Binds avancés dynamiques
         mode = cfg.get("advanced_bind_mode", "cycle")
+
         if mode == "cycle":
             row_binds = cfg.get("cycle_row_binds", [])
             for index, bind_str in enumerate(row_binds):
-                if bind_str:
-                    self.register_action(bind_str, lambda idx=index: self._execute_advanced_and_update("cycle", idx))
+                effective_bind = self._apply_advanced_modifier(bind_str)
+                if effective_bind:
+                    self.register_action(
+                        effective_bind,
+                        lambda idx=index: self._execute_advanced_and_update("cycle", idx)
+                    )
+
         elif mode == "bind":
             char_binds = cfg.get("persistent_character_binds", {})
             for pseudo, bind_str in char_binds.items():
-                if bind_str:
-                    self.register_action(bind_str, lambda ps=pseudo: self._execute_advanced_and_update("bind", ps))
+                effective_bind = self._apply_advanced_modifier(bind_str)
+                if effective_bind:
+                    self.register_action(
+                        effective_bind,
+                        lambda ps=pseudo: self._execute_advanced_and_update("bind", ps)
+                    )
                     
         try:
             if cfg.get("prev_key"): self.register_action(cfg["prev_key"], self.prev_char)
@@ -394,36 +476,51 @@ class OrganizerApp:
         os.system(f"taskkill /F /PID {my_pid} /T")
 
     def start_notification_listener(self):
-        if not WINSDK_AVAILABLE: return
+        if not WINSDK_AVAILABLE:
+            print("[INFO] Notification listener disabled: WinRT packages not available.")
+            return
 
         def run_async_loop():
             try:
                 import pythoncom
-                pythoncom.CoInitializeEx(0, pythoncom.COINIT_MULTITHREADED)
-            except: pass
-            
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.poll_notifications())
+                try:
+                    pythoncom.CoInitializeEx(0, pythoncom.COINIT_MULTITHREADED)
+                except Exception:
+                    pass
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(self.poll_notifications())
+            except Exception as e:
+                print(f"[WARN] Notification listener stopped: {e}")
 
         threading.Thread(target=run_async_loop, daemon=True).start()
 
     async def poll_notifications(self):
-        listener = UserNotificationListener.current
-        access = await listener.request_access_async()
-        if access != 1: return
+        if not WINSDK_AVAILABLE or UserNotificationListener is None:
+            return
+
+        try:
+            listener = UserNotificationListener.current
+            access = await listener.request_access_async()
+        except Exception as e:
+            print(f"[WARN] Could not initialize Windows notification listener: {e}")
+            return
+
+        if access != 1:
+            return
 
         seen_ids = set()
-        first_pass = True 
+        first_pass = True
 
         while True:
             try:
                 is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
                 is_autofocus_on = self.config.data.get("auto_focus_retro", False)
-                
+
                 notifs = await listener.get_notifications_async(NotificationKinds.TOAST)
                 current_ids = set()
-                
+
                 for n in notifs:
                     current_ids.add(n.id)
                     if n.id not in seen_ids:
@@ -437,38 +534,56 @@ class OrganizerApp:
                                         pseudo = ligne.split(" - ")[0].strip()
                                         cycle_list = self.logic.get_cycle_list()
                                         for index, acc in enumerate(cycle_list):
-                                            if acc['name'] == pseudo:
-                                                self.gui.root.after(0, self.logic.focus_window, acc['hwnd'])
+                                            if acc["name"] == pseudo:
+                                                self.gui.root.after(0, self.logic.focus_window, acc["hwnd"])
                                                 self.current_idx = index
                                                 break
-                                        break 
-                            except Exception: pass
+                                        break
+                            except Exception:
+                                pass
+
                 seen_ids.intersection_update(current_ids)
-                first_pass = False 
-            except Exception: pass
-            await asyncio.sleep(0.5) 
-                
+                first_pass = False
+            except Exception:
+                pass
+
+            await asyncio.sleep(0.5)
+            
+
 # --- SYSTÈME DE VÉRIFICATION DE VERSION ---
-CURRENT_VERSION = "1.1.1" 
+CURRENT_VERSION = "1.1.1"
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
-def check_version():
+def check_version(app_config):
     try:
         response = requests.get(VERSION_URL, timeout=5)
-        response.raise_for_status() 
+        response.raise_for_status()
         data = response.json()
         latest_version = data.get("version")
 
         if latest_version and latest_version != CURRENT_VERSION:
-            message = (
-                f"Une mise à jour est requise pour utiliser le logiciel.\n\n"
-                f"Votre version : {CURRENT_VERSION}\n"
-                f"Version disponible : {latest_version}\n\n"
-                f"Mise à jour dispo sur Dosoft.fr"
+            message = t_cfg(
+                app_config,
+                "Une mise à jour est requise pour utiliser le logiciel.\n\n"
+                "Votre version : {current_version}\n"
+                "Version disponible : {latest_version}\n\n"
+                "Mise à jour dispo sur Dosoft.fr",
+                current_version=CURRENT_VERSION,
+                latest_version=latest_version,
             )
-            ctypes.windll.user32.MessageBoxW(0, message, "Mise à jour requise", 0x10)
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                message,
+                t_cfg(app_config, "Mise à jour requise"),
+                0x10
+            )
     except requests.RequestException:
-        ctypes.windll.user32.MessageBoxW(0, "Impossible de vérifier la version.", "Erreur réseau", 0x10)
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            t_cfg(app_config, "Impossible de vérifier la version."),
+            t_cfg(app_config, "Erreur réseau"),
+            0x10
+        )
         
 
 def is_admin():
@@ -483,14 +598,25 @@ def run_as_admin():
         params = ' '.join([f'"{arg}"' for arg in sys.argv[1:]])
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, f'"{script}" {params}', None, 1)
 
-def handle_multiple_instances():
+def handle_multiple_instances(app_config):
     mutex_name = "DOSOFT_SINGLE_INSTANCE_MUTEX"
     mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+
     if ctypes.windll.kernel32.GetLastError() == 183:
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
-        rep = messagebox.askyesno("Instance détectée", "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?", parent=root)
+
+        rep = messagebox.askyesno(
+            t_cfg(app_config, "Instance détectée"),
+            t_cfg(
+                app_config,
+                "Une instance de DOSOFT est déjà en cours d'exécution !\n\n"
+                "Voulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"
+            ),
+            parent=root
+        )
+
         if rep:
             hwnd = win32gui.FindWindow(None, "DOSOFT v1.1.1")
             if hwnd:
@@ -499,24 +625,29 @@ def handle_multiple_instances():
                     handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
                     ctypes.windll.kernel32.TerminateProcess(handle, 0)
                     ctypes.windll.kernel32.CloseHandle(handle)
-                except: pass
-            time.sleep(0.5) 
+                except Exception:
+                    pass
+            time.sleep(0.5)
             root.destroy()
         else:
             root.destroy()
             sys.exit(0)
+
     return mutex
 
 def start_application():
     if not is_admin():
         run_as_admin()
-        sys.exit() 
-           
-    _app_mutex = handle_multiple_instances()
-    check_version()
+        sys.exit()
 
-    app = OrganizerApp()
+    app_config = Config()
+
+    _app_mutex = handle_multiple_instances(app_config)
+    check_version(app_config)
+
+    app = OrganizerApp(app_config)
     app.gui.run()
+    
 
 if __name__ == "__main__":
     start_application()

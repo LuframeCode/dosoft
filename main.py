@@ -144,11 +144,19 @@ class OrganizerApp:
 
         menu = pystray.Menu(
             item(self._t("Afficher/Cacher"), self.toggle_from_tray, default=True),
+            item(self._t("Trier Barre Windows"), self.sort_taskbar_from_tray),
+            item(self._t("Rafraîchir"), self.refresh_from_tray),
             item(self._t("Quitter"), self.quit_from_tray),
         )
         self.tray_icon = pystray.Icon("dosoft_tray", image, "DOSOFT", menu)
         self.tray_icon.run_detached()
+    
+    def refresh_from_tray(self, icon, item):
+        self.gui.root.after(0, self.refresh)
 
+    def sort_taskbar_from_tray(self, icon, item):
+        self.gui.root.after(0, self.gui.trigger_sort_taskbar)
+        
     def toggle_from_tray(self, icon, item):
         def safe_toggle():
             if self.gui.root.state() == 'withdrawn':

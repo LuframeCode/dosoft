@@ -49,41 +49,34 @@ class SettingsWindow(ctk.CTkToplevel):
         lang = self.lang
 
         # Idioma
-        ctk.CTkLabel(self.scroll_container,text=self.t("Language"),font=title_font
-        ).pack(pady=(20, 5))
+        ctk.CTkLabel(self.scroll_container,text=self.t("Language"),font=title_font).pack(pady=(20, 5))
 
         frame_lang = ctk.CTkFrame(self.scroll_container)
         frame_lang.pack(fill="x", padx=10, pady=5)
 
-        self.combo_language = ctk.CTkOptionMenu(frame_lang,values=get_language_options(),command=self.on_language_change,
-        )
-        self.combo_language.set(language_label(lang))
+        self.combo_language = ctk.CTkOptionMenu(frame_lang, values=get_language_options(lang), command=self.on_language_change)
+        self.combo_language.set(language_label(lang, lang))
         self.combo_language.pack(fill="x", padx=10, pady=10)
 
         # Layout do teclado
-        ctk.CTkLabel(self.scroll_container,text=self.t("Keyboard layout"),font=title_font
-        ).pack(pady=(20, 5))
+        ctk.CTkLabel(self.scroll_container, text=self.t("Keyboard layout"), font=title_font).pack(pady=(20, 5))
 
         frame_layout = ctk.CTkFrame(self.scroll_container)
         frame_layout.pack(fill="x", padx=10, pady=5)
 
-        self.combo_layout = ctk.CTkOptionMenu(frame_layout,values=get_keyboard_layout_options(lang),command=self.on_keyboard_layout_change,
-        )
-        self.combo_layout.set(keyboard_layout_label(    lang,    self.app.config.data.get("keyboard_layout", "qwerty"))
-        )
+        self.combo_layout = ctk.CTkOptionMenu(frame_layout, values=get_keyboard_layout_options(lang), command=self.on_keyboard_layout_change)
+        self.combo_layout.set(keyboard_layout_label(lang, self.app.config.data.get("keyboard_layout", "qwerty")))
         self.combo_layout.pack(fill="x", padx=10, pady=10)
 
         # Roda radial
-        ctk.CTkLabel(self.scroll_container,text=self.t("Roue de Focus (Radiale)"),font=title_font
-        ).pack(pady=(20, 5))
+        ctk.CTkLabel(self.scroll_container, text=self.t("Roue de Focus (Radiale)"), font=title_font).pack(pady=(20, 5))
 
         frame_radial = ctk.CTkFrame(self.scroll_container)
         frame_radial.pack(fill="x", padx=10, pady=5)
 
-        self.var_radial = ctk.BooleanVar(value=self.app.config.data.get("radial_menu_active", True)
-        )
-        sw_radial = ctk.CTkSwitch(frame_radial,text=self.t("Activer la roue"),variable=self.var_radial,command=self.save_settings,
-        )
+        self.var_radial = ctk.BooleanVar(value=self.app.config.data.get("radial_menu_active", True))
+
+        sw_radial = ctk.CTkSwitch(frame_radial, text=self.t("Activer la roue"), variable=self.var_radial, command=self.save_settings)
         sw_radial.pack(pady=10)
 
         frame_hk = ctk.CTkFrame(frame_radial, fg_color="transparent")
@@ -93,18 +86,15 @@ class SettingsWindow(ctk.CTkToplevel):
         lbl_hk.pack(side="left", padx=5)
 
         current_val = self.app.config.data.get("radial_menu_hotkey", "alt+left_click")
-        btn_hk = ctk.CTkButton(frame_hk,text=self.parent.display_hotkey(current_val),width=120,command=lambda: self.parent.catch_key("radial_menu_hotkey", btn_hk, allow_mouse=True),
-        )
+        btn_hk = ctk.CTkButton(frame_hk, text=self.parent.display_hotkey(current_val), width=120, command=lambda: self.parent.catch_key("radial_menu_hotkey", btn_hk, allow_mouse=True))
         btn_hk.pack(side="left", padx=5)
 
         self.parent.hotkey_btns["radial_menu_hotkey"] = btn_hk
 
-        btn_x = ctk.CTkButton(frame_hk,text="✖",width=25,fg_color="#c0392b",hover_color="#e74c3c",command=lambda: self.parent.clear_key("radial_menu_hotkey", btn_hk),
-        )
+        btn_x = ctk.CTkButton(frame_hk, text="✖", width=25, fg_color="#c0392b", hover_color="#e74c3c", command=lambda: self.parent.clear_key("radial_menu_hotkey", btn_hk),)
         btn_x.pack(side="left", padx=5)
 
-        btn_close = ctk.CTkButton(self.scroll_container,text=self.t("Fermer & Sauvegarder"),fg_color="#7f8c8d",command=self.save_and_close,
-        )
+        btn_close = ctk.CTkButton(self.scroll_container, text=self.t("Fermer & Sauvegarder"), fg_color="#7f8c8d", command=self.save_and_close)
         btn_close.pack(pady=(20, 10))
 
     @property
@@ -171,7 +161,7 @@ class OrganizerGUI:
     def __init__(self, app_controller):
         self.app = app_controller
         self.root = ctk.CTk()
-        self.root.title("DOSOFT v1.2.1")
+        self.root.title("DOSOFT v1.2.2")
 
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
@@ -209,7 +199,7 @@ class OrganizerGUI:
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
 
-        ctk.CTkLabel(self.header_f,text="DOSOFT v1.2.1",font=ctk.CTkFont(size=20, weight="bold")
+        ctk.CTkLabel(self.header_f,text="DOSOFT v1.2.2",font=ctk.CTkFont(size=20, weight="bold")
         ).pack(side="left")
 
         self.btn_settings = ctk.CTkButton(self.header_f,text=self.t("⚙️ Paramètres"),fg_color="#34495e",hover_color="#2c3e50",width=120,command=self.open_settings,
@@ -237,7 +227,7 @@ class OrganizerGUI:
         self.combo_mode.set(cfg.get("current_mode", "ALL"))
         self.combo_mode.pack(side="left", padx=5, pady=5)
 
-        lbl_version = ctk.CTkLabel(self.frame_mode, text="Versions :")
+        lbl_version = ctk.CTkLabel(self.frame_mode, text=self.t("Versions :"))
         lbl_version.pack(side="left", padx=(20, 5), pady=5)
 
         self.combo_version = ctk.CTkOptionMenu(self.frame_mode,values=["Unity", "Rétro"],width=100,fg_color="#8e44ad",button_color="#9b59b6",button_hover_color="#8e44ad",command=self.on_version_change
@@ -246,12 +236,11 @@ class OrganizerGUI:
         self.combo_version.pack(side="left", padx=5, pady=5)
 
         self.var_autofocus = ctk.BooleanVar(value=cfg.get("auto_focus_retro", False))
-        self.chk_autofocus = ctk.CTkCheckBox(self.frame_mode,text="Auto-Focus 🔔",variable=self.var_autofocus,command=self.toggle_autofocus,width=110
-        )
+        self.chk_autofocus = ctk.CTkCheckBox(self.frame_mode,text=self.t("Auto-Focus 🔔"),variable=self.var_autofocus,command=self.toggle_autofocus,width=110)
 
         if cfg.get("game_version", "Unity") == "Rétro":self.chk_autofocus.pack(side="left", padx=(15, 5))
 
-        self.bind_tooltip(self.chk_autofocus, "Focus automatiquement la page Rétro lors d'une notification")
+        self.bind_tooltip(self.chk_autofocus,self.t("Focus automatiquement la page Rétro lors d'une notification"))
 
         self.frame_keys = ctk.CTkFrame(self.root)
         self.frame_keys.pack(fill="x", padx=15, pady=10)
@@ -632,7 +621,7 @@ class OrganizerGUI:
         else:
             self.chk_autofocus.pack_forget()
         self.original_app_refresh()
-        self.show_temporary_message(f"🔄 Mode {choice} activé !", "#3498db")
+        self.show_temporary_message(self.t("🔄 Mode {choice} activé !", choice=choice),"#3498db")
 
     def on_mode_change(self, choice):
         self.app.logic.set_mode(choice)

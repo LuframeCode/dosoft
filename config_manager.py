@@ -8,7 +8,7 @@ class Config:
     def __init__(self, filename="settings.json"):
         self.filename = filename
         self.data = {
-            "language": "fr",
+            "language": "pt",
             "keyboard_layout": "qwerty",
             "prev_key": "tab",
             "next_key": "`",

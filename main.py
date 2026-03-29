@@ -180,7 +180,7 @@ class OrganizerApp:
 
     def show_conflict_popup(self):
         popup = ctk.CTkToplevel(self.gui.root)
-        popup.title("⚠️ Conflit de logiciels détecté")
+        popup.title(self._t("⚠️ Conflit de logiciels détecté"))
         popup.geometry("480x250")
         popup.attributes("-topmost", True)
         popup.resizable(False, False)
@@ -191,7 +191,7 @@ class OrganizerApp:
         y = self.gui.root.winfo_y() + (self.gui.root.winfo_height() // 2) - (250 // 2)
         popup.geometry(f"+{x}+{y}")
 
-        msg = ("Le logiciel 'Organizer' est actuellement ouvert.\n"
+        msg = self._t("Le logiciel 'Organizer' est actuellement ouvert.\n"
                "L'utilisation de deux gestionnaires de pages simultanément\n"
                "va créer des bugs et des conflits de focus sur DOSOFT.\n\n"
                "Nous vous recommandons fortement de le fermer.")
@@ -200,7 +200,7 @@ class OrganizerApp:
         lbl.pack(pady=(20, 15))
 
         var_ignore = ctk.BooleanVar(value=False)
-        chk = ctk.CTkCheckBox(popup, text="Ne plus m'afficher cet avertissement", variable=var_ignore)
+        chk = ctk.CTkCheckBox(popup, text=self._t("Ne plus m'afficher cet avertissement"), variable=var_ignore)
         chk.pack(pady=(0, 20))
 
         frame_btn = ctk.CTkFrame(popup, fg_color="transparent")
@@ -212,7 +212,7 @@ class OrganizerApp:
                 self.config.save()
             os.system("taskkill /F /IM organizer.exe /T")
             popup.destroy()
-            self.gui.show_temporary_message("✅ Organizer fermé avec succès !", "#2ecc71")
+            self.gui.show_temporary_message(self._t("✅ Organizer fermé avec succès !"), "#2ecc71")
 
         def on_keep_organizer():
             if var_ignore.get():
@@ -220,10 +220,10 @@ class OrganizerApp:
                 self.config.save()
             popup.destroy()
 
-        btn_close = ctk.CTkButton(frame_btn, text="Fermer Organizer", fg_color="#27ae60", hover_color="#2ecc71", command=on_close_organizer)
+        btn_close = ctk.CTkButton(frame_btn, text=self._t("Fermer Organizer"), fg_color="#27ae60", hover_color="#2ecc71", command=on_close_organizer)
         btn_close.pack(side="left", expand=True, padx=10)
 
-        btn_keep = ctk.CTkButton(frame_btn, text="Conserver", fg_color="#7f8c8d", hover_color="#95a5a6", command=on_keep_organizer)
+        btn_keep = ctk.CTkButton(frame_btn, text=self._t("Conserver"), fg_color="#7f8c8d", hover_color="#95a5a6", command=on_keep_organizer)
         btn_keep.pack(side="right", expand=True, padx=10)
         
         popup.grab_set()
@@ -553,7 +553,7 @@ class OrganizerApp:
             
 
 # --- SYSTÈME DE VÉRIFICATION DE VERSION ---
-CURRENT_VERSION = "1.2.1"
+CURRENT_VERSION = "1.2.2"
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
 def check_version(app_config):
@@ -613,14 +613,13 @@ def handle_multiple_instances(app_config):
             t_cfg(app_config, "Instance détectée"),
             t_cfg(
                 app_config,
-                "Une instance de DOSOFT est déjà en cours d'exécution !\n\n"
-                "Voulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"
+                "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"
             ),
             parent=root
         )
 
         if rep:
-            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.1")
+            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.2")
             if hwnd:
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 try:

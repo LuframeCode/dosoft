@@ -132,6 +132,8 @@ class OrganizerApp:
 
         if mod not in MODIFIER_TOKENS:
             mod = "ctrl"
+
+        return "+".join([mod] + base_parts)
     
     def setup_system_tray(self):
         icon_path = "logo.ico"
@@ -551,7 +553,7 @@ class OrganizerApp:
             
 
 # --- SYSTÈME DE VÉRIFICATION DE VERSION ---
-CURRENT_VERSION = "1.1.1"
+CURRENT_VERSION = "1.2.1"
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
 def check_version(app_config):
@@ -618,7 +620,7 @@ def handle_multiple_instances(app_config):
         )
 
         if rep:
-            hwnd = win32gui.FindWindow(None, "DOSOFT v1.1.1")
+            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.1")
             if hwnd:
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 try:

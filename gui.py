@@ -171,7 +171,7 @@ class OrganizerGUI:
     def __init__(self, app_controller):
         self.app = app_controller
         self.root = ctk.CTk()
-        self.root.title("DOSOFT v1.2.0")
+        self.root.title("DOSOFT v1.2.1")
 
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
@@ -209,7 +209,7 @@ class OrganizerGUI:
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
 
-        ctk.CTkLabel(self.header_f,text="DOSOFT v1.1.1",font=ctk.CTkFont(size=20, weight="bold")
+        ctk.CTkLabel(self.header_f,text="DOSOFT v1.2.1",font=ctk.CTkFont(size=20, weight="bold")
         ).pack(side="left")
 
         self.btn_settings = ctk.CTkButton(self.header_f,text=self.t("⚙️ Paramètres"),fg_color="#34495e",hover_color="#2c3e50",width=120,command=self.open_settings,

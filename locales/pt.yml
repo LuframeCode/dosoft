@@ -1,0 +1,147 @@
+meta:
+  language_name: Português
+  speed_labels:
+    fast: Rápido
+    medium: Médio
+    slow: Lento
+  legacy_speed_values:
+    rápido: fast
+    rapido: fast
+    médio: medium
+    medio: medium
+    lento: slow
+    fast: fast
+    medium: medium
+    slow: slow
+  keyboard_layout_labels:
+    qwerty: QWERTY (US/Internacional)
+    azerty: AZERTY (Francês)
+translations:
+  Activer la roue: Ativar roda
+  Afficher/Cacher: Mostrar/Ocultar
+  Aucun: Nenhum
+  aucun: nenhum
+  Aucun personnage connecté détecté.: Nenhum personagem conectado detectado.
+  Auto-Focus 🔔: Auto-Focus 🔔
+  Bulles: Dicas
+  Cacher l'UI: Ocultar interface
+  Changer l'équipe: Trocar equipe
+  Chef: Líder
+  Comptes actifs: Contas ativas
+  Confirmation: Confirmação
+  Conserver: Manter
+  'Contrôler :': 'Controlar:'
+  Descendre: Mover para baixo
+  DOSOFT v1.1.1: DOSOFT v1.1.1
+  DOSOFT_SINGLE_INSTANCE_MUTEX: DOSOFT_SINGLE_INSTANCE_MUTEX
+  Définir comme Chef: Definir como líder
+  Effacer le raccourci: Limpar atalho
+  Erreur réseau: Erro de rede
+  Fermer: Fermer
+  Fermer & Sauvegarder: Fechar e salvar
+  Fermer la fenêtre: Fechar janela
+  Fermer Organizer: Fechar Organizer
+  Fermer Team: Fechar time
+  Focus automatiquement la page Rétro lors d'une notification: Focar automaticamente a janela Rétro ao receber uma notificação
+  Focus perso précédent: Focar personagem anterior
+  Focus perso suivant: Focar próximo personagem
+  Gérer les raccourcis avancés par personnage: Gerenciar atalhos avançados por personagem
+  hide: hide
+  https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json: https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json
+  Impossible de vérifier la version.: Não foi possível verificar a versão.
+  Instance détectée: Instância detectada
+  Keyboard layout: Layout do teclado
+  Language: Idioma
+  ? 'Le logiciel ''Organizer'' est actuellement ouvert.
+
+    L''utilisation de deux gestionnaires de pages simultanément
+
+    va créer des bugs et des conflits de focus sur DOSOFT.
+
+
+    Nous vous recommandons fortement de le fermer.'
+  : 'O programa ''Organizer'' está aberto no momento.
+
+    Usar dois gerenciadores de janelas ao mesmo tempo
+
+    vai causar bugs e conflitos de foco no DOSOFT.
+
+
+    Recomendamos fortemente fechá-lo.'
+  left_click: left_click
+  logo.ico: logo.ico
+  Masquer/Afficher l'app: Ocultar/Mostrar o app
+  middle_click: middle_click
+  Mise à jour requise: Atualização obrigatória
+  'Mode :': 'Modo:'
+  Monter: Mover para cima
+  mouse4: mouse4
+  mouse5: mouse5
+  Ne plus m'afficher cet avertissement: Não mostrar este aviso novamente
+  Paramètres du jeu et de la roue: Configurações do jogo e da roda
+  Place n°{index}: Posição nº{index}
+  Position exacte: Posição exata
+  Précédent: Anterior
+  'Préfixe Global :': 'Prefixo global:'
+  Quitter: Sair
+  'Raccourci :': 'Atalho:'
+  Raccourcis Clavier: Atalhos do teclado
+  Rafraîchir: Atualizar
+  Reprendre focus sur le Chef: Retomar foco no líder
+  Reset Settings: Redefinir configurações
+  right_click: right_click
+  Roue de Focus (Radiale): Roda de foco (radial)
+  'Shutdown complet : Force la fermeture immédiate de DOFRAME': 'Encerramento completo: força o fechamento imediato do DOFRAME'
+  Suivant: Próximo
+  Target fixe par pseudo (Même s'ils changent d'ordre): Alvo fixo por personagem (mesmo se a ordem mudar)
+  'Target immuable par place. (ex: Ligne 1 focus le 1er de l''initiative)': 'Alvo fixo por posição. (ex.: Linha 1 foca o 1º da iniciativa)'
+  Trier Barre Windows: Ordenar janelas do Windows
+  Tutoriel Vidéo: Tutorial em vídeo
+  ? 'Une instance de DOSOFT est déjà en cours d''exécution !
+
+
+    Voulez-vous fermer l''ancienne instance pour ouvrir celle-ci ?'
+  : 'Uma instância do DOSOFT já está em execução!
+
+
+    Deseja fechar a instância antiga para abrir esta?'
+  ? 'Une mise à jour est requise pour utiliser le logiciel.
+
+
+    Votre version : {current_version}
+
+    Version disponible : {latest_version}
+
+
+    Mise à jour dispo sur Dosoft.fr'
+  : 'É necessário atualizar para usar o programa.
+
+
+    Sua versão: {current_version}
+
+    Versão disponível: {latest_version}
+
+
+    Atualização disponível em Dosoft.fr'
+  'Versions :': 'Versões:'
+  Voulez-vous ouvrir la vidéo de présentation sur YouTube ?: Deseja abrir o vídeo de apresentação no YouTube?
+  ? 'Êtes-vous sûr de vouloir tout réinitialiser ?
+
+
+    Toutes vos touches seront perdues.'
+  : 'Tem certeza de que deseja redefinir tudo?
+
+
+    Todos os seus atalhos serão perdidos.'
+  ⚙️ Gestionnaire de Binds Avancé DOFRAME: ⚙️ Gerenciador avançado de atalhos DOFRAME
+  ⚙️ Gestionnaire de Binds Avancé DOSOFT: ⚙️ Gerenciador avançado de atalhos DOSOFT
+  ⚙️ Paramètres: ⚙️ Configurações
+  ⚠️ Conflit de logiciels détecté: ⚠️ Conflito de softwares detectado
+  ✅ Organizer fermé avec succès !: ✅ Organizer fechado com sucesso!
+  ✅ Raccourcis enregistrés avec succès !: ✅ Atalhos salvos com sucesso!
+  🎓 Tuto: 🎓 Tutorial
+  💥 La team a été fermée !: 💥 O time foi fechado!
+  💾 Enregistrer les raccourcis: 💾 Salvar atalhos
+  🔄 Mode {choice} activé !: 🔄 Modo {choice} ativado!
+  '🔊 Volume Roulette :': '🔊 Volume da roda:'
+  🚀 Les pages ont été rangées avec succès !: 🚀 As janelas foram organizadas com sucesso!

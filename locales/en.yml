@@ -1,0 +1,142 @@
+meta:
+  language_name: English
+  speed_labels:
+    fast: Fast
+    medium: Medium
+    slow: Slow
+  legacy_speed_values:
+    fast: fast
+    medium: medium
+    slow: slow
+  keyboard_layout_labels:
+    qwerty: QWERTY (US/International)
+    azerty: AZERTY (French)
+translations:
+  Activer la roue: Enable wheel
+  Afficher/Cacher: Show/Hide
+  Aucun: None
+  aucun: none
+  Aucun personnage connecté détecté.: No connected character detected.
+  Auto-Focus 🔔: Auto-Focus 🔔
+  Bulles: Tooltips
+  Cacher l'UI: Hide UI
+  Changer l'équipe: Change team
+  Chef: Leader
+  Comptes actifs: Active accounts
+  Confirmation: Confirmation
+  Conserver: Keep
+  'Contrôler :': 'Control:'
+  Descendre: Move down
+  DOSOFT v1.1.1: DOSOFT v1.1.1
+  DOSOFT_SINGLE_INSTANCE_MUTEX: DOSOFT_SINGLE_INSTANCE_MUTEX
+  Définir comme Chef: Set as leader
+  Effacer le raccourci: Clear shortcut
+  Erreur réseau: Network error
+  Fermer: Fermer
+  Fermer & Sauvegarder: Close & Save
+  Fermer la fenêtre: Close window
+  Fermer Organizer: Close Organizer
+  Fermer Team: Close team
+  Focus automatiquement la page Rétro lors d'une notification: Automatically focus the Rétro window on notification
+  Focus perso précédent: Focus previous character
+  Focus perso suivant: Focus next character
+  Gérer les raccourcis avancés par personnage: Manage advanced per-character shortcuts
+  hide: hide
+  https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json: https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json
+  Impossible de vérifier la version.: Unable to check the version.
+  Instance détectée: Instance detected
+  Keyboard layout: Keyboard layout
+  Language: Language
+  ? 'Le logiciel ''Organizer'' est actuellement ouvert.
+
+    L''utilisation de deux gestionnaires de pages simultanément
+
+    va créer des bugs et des conflits de focus sur DOSOFT.
+
+
+    Nous vous recommandons fortement de le fermer.'
+  : 'The ''Organizer'' software is currently open.
+
+    Using two page managers at the same time
+
+    will create bugs and focus conflicts in DOSOFT.
+
+
+    We strongly recommend closing it.'
+  left_click: left_click
+  logo.ico: logo.ico
+  Masquer/Afficher l'app: Hide/Show the app
+  middle_click: middle_click
+  Mise à jour requise: Update required
+  'Mode :': 'Mode:'
+  Monter: Move up
+  mouse4: mouse4
+  mouse5: mouse5
+  Ne plus m'afficher cet avertissement: Don't show this warning again
+  Paramètres du jeu et de la roue: Game and wheel settings
+  Place n°{index}: 'Slot #{index}'
+  Position exacte: Exact position
+  Précédent: Previous
+  'Préfixe Global :': 'Global prefix:'
+  Quitter: Quit
+  'Raccourci :': 'Shortcut:'
+  Raccourcis Clavier: Keyboard shortcuts
+  Rafraîchir: Refresh
+  Reprendre focus sur le Chef: Refocus the leader
+  Reset Settings: Reset Settings
+  right_click: right_click
+  Roue de Focus (Radiale): Focus wheel (radial)
+  'Shutdown complet : Force la fermeture immédiate de DOFRAME': 'Full shutdown: immediately force-close DOFRAME'
+  Suivant: Next
+  Target fixe par pseudo (Même s'ils changent d'ordre): Fixed target by character name (even if order changes)
+  'Target immuable par place. (ex: Ligne 1 focus le 1er de l''initiative)': Fixed target by slot. (e.g. Row 1 focuses the 1st initiative slot)
+  Trier Barre Windows: Sort Windows taskbar
+  Tutoriel Vidéo: Video tutorial
+  ? 'Une instance de DOSOFT est déjà en cours d''exécution !
+
+
+    Voulez-vous fermer l''ancienne instance pour ouvrir celle-ci ?'
+  : 'A DOSOFT instance is already running!
+
+
+    Do you want to close the old instance to open this one?'
+  ? 'Une mise à jour est requise pour utiliser le logiciel.
+
+
+    Votre version : {current_version}
+
+    Version disponible : {latest_version}
+
+
+    Mise à jour dispo sur Dosoft.fr'
+  : 'An update is required to use the software.
+
+
+    Your version: {current_version}
+
+    Available version: {latest_version}
+
+
+    Update available on Dosoft.fr'
+  'Versions :': 'Versions:'
+  Voulez-vous ouvrir la vidéo de présentation sur YouTube ?: Do you want to open the presentation video on YouTube?
+  ? 'Êtes-vous sûr de vouloir tout réinitialiser ?
+
+
+    Toutes vos touches seront perdues.'
+  : 'Are you sure you want to reset everything?
+
+
+    All your shortcuts will be lost.'
+  ⚙️ Gestionnaire de Binds Avancé DOFRAME: ⚙️ Advanced bind manager DOFRAME
+  ⚙️ Gestionnaire de Binds Avancé DOSOFT: ⚙️ Advanced bind manager DOSOFT
+  ⚙️ Paramètres: ⚙️ Settings
+  ⚠️ Conflit de logiciels détecté: ⚠️ Software conflict detected
+  ✅ Organizer fermé avec succès !: ✅ Organizer closed successfully!
+  ✅ Raccourcis enregistrés avec succès !: ✅ Shortcuts saved successfully!
+  🎓 Tuto: 🎓 Tutorial
+  💥 La team a été fermée !: 💥 The team was closed!
+  💾 Enregistrer les raccourcis: 💾 Save shortcuts
+  🔄 Mode {choice} activé !: 🔄 {choice} mode enabled!
+  '🔊 Volume Roulette :': '🔊 Wheel volume:'
+  🚀 Les pages ont été rangées avec succès !: 🚀 Windows were sorted successfully!

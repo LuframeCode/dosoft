@@ -86,6 +86,7 @@ class OrganizerApp:
 
         menu = pystray.Menu(
             item('Afficher/Cacher', self.toggle_from_tray, default=True),
+            item('Trier Barre Windows', self.sort_taskbar_from_tray),
             item('Rafraîchir', self.refresh_from_tray),
             item('Quitter', self.quit_from_tray)
         )
@@ -104,6 +105,9 @@ class OrganizerApp:
 
     def refresh_from_tray(self, icon, item):
         self.gui.root.after(0, self.refresh)
+
+    def sort_taskbar_from_tray(self, icon, item):
+        self.gui.root.after(0, self.gui.trigger_sort_taskbar)
 
     def quit_from_tray(self, icon, item):
         self.tray_icon.stop() 

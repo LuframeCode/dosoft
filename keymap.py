@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Dict
 
+# MAYBE THIS NEED A REFACTOR
+# BECAUSE WHEN I WROTE THIS  GOD AND I UNDERSTAND WHAT I`M DOING
+# NOW... ONLY GOD KNOWS`
+
+
 QWERTY_KEY_TO_SCAN: Dict[str, int] = {
     # Number row / punctuation
     '`': 41,

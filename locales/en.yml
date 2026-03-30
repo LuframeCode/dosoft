@@ -12,6 +12,8 @@ meta:
     qwerty: QWERTY (US/International)
     azerty: AZERTY (French)
 translations:
+  Activer/Désactiver le compte: Enable/Disable account
+  Aucun compte détecté.: No account detected.
   Activer la roue: Enable wheel
   Afficher/Cacher: Show/Hide
   Aucun: None
@@ -86,7 +88,7 @@ translations:
   Reset Settings: Reset Settings
   right_click: right_click
   Roue de Focus (Radiale): Focus wheel (radial)
-  'Shutdown complet : Force la fermeture immédiate de DOFRAME': 'Full shutdown: immediately force-close DOFRAME'
+  'Shutdown complet : Force la fermeture immédiate de DOSOFT': 'Full shutdown: immediately force-close DOSOFT'
   Suivant: Next
   Target fixe par pseudo (Même s'ils changent d'ordre): Fixed target by character name (even if order changes)
   'Target immuable par place. (ex: Ligne 1 focus le 1er de l''initiative)': Fixed target by slot. (e.g. Row 1 focuses the 1st initiative slot)
@@ -128,7 +130,6 @@ translations:
 
 
     All your shortcuts will be lost.'
-  ⚙️ Gestionnaire de Binds Avancé DOFRAME: ⚙️ Advanced bind manager DOFRAME
   ⚙️ Gestionnaire de Binds Avancé DOSOFT: ⚙️ Advanced bind manager DOSOFT
   ⚙️ Paramètres: ⚙️ Settings
   ⚠️ Conflit de logiciels détecté: ⚠️ Software conflict detected

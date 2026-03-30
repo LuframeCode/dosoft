@@ -3,9 +3,11 @@ import math
 import win32api
 import os
 from PIL import Image, ImageTk
+from utils import resource_path
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
+
 
 class RadialMenu:
     def __init__(self, parent_root, on_select_callback, accent_color="#3498db", hover_color="#2980b9", center_icon_path=None):
@@ -32,14 +34,14 @@ class RadialMenu:
         self.is_open = False
         self.image_cache = {} 
         self.base_volume = 0.5 
-        self.current_name = None # NOUVEAU : Mémorise le nom du perso actif
+        self.current_name = None
         
         try:
             pygame.mixer.init()
             self.mixer_active = True
             
-            hover_path = os.path.abspath("sounds/hover.wav")
-            click_path = os.path.abspath("sounds/click.wav")
+            hover_path = resource_path("sounds", "hover.wav")  # ← corrigido
+            click_path = resource_path("sounds", "click.wav")  # ← corrigido
             
             self.sound_hover = pygame.mixer.Sound(hover_path) if os.path.exists(hover_path) else None
             self.sound_click = pygame.mixer.Sound(click_path) if os.path.exists(click_path) else None
@@ -55,7 +57,7 @@ class RadialMenu:
             try:
                 img = Image.open(center_icon_path).resize((40, 40), Image.Resampling.LANCZOS)
                 self.center_image = ImageTk.PhotoImage(img)
-            except Exception as e:
+            except Exception:
                 pass
         
         self.window.withdraw()
@@ -67,25 +69,24 @@ class RadialMenu:
             if self.sound_click: self.sound_click.set_volume(0.8 * self.base_volume)
 
     def load_image(self, class_name):
-        # NOUVEAU : Cherche "Classe_retro.png" si le mode Rétro est activé
         filename = f"{class_name}_retro" if getattr(self, 'is_retro', False) and class_name != "Inconnu" else class_name
         
         if filename in self.image_cache: return self.image_cache[filename]
-        path = f"skin/{filename}.png"
+        path = resource_path("skin", f"{filename}.png")  # ← corrigido
         if not os.path.exists(path): return None
         try:
             img = Image.open(path).resize((36, 36), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             self.image_cache[filename] = photo
             return photo
-        except Exception as e:
+        except Exception:
             return None
 
     def show(self, x, y, items, current_name=None, is_retro=False):
         if not items: return
         self.items = items
         self.current_name = current_name
-        self.is_retro = is_retro # NOUVEAU : On mémorise si on est en mode Rétro
+        self.is_retro = is_retro
         
         self.build_wheel()
         pos_x = int(x - self.center)
@@ -115,10 +116,7 @@ class RadialMenu:
         bbox = (self.center - self.radius_outer, self.center - self.radius_outer, self.center + self.radius_outer, self.center + self.radius_outer)
         
         for i, item in enumerate(self.items):
-            # NOUVEAU : Dessin dans le SENS HORAIRE en partant de 12h (90 degrés)
             start = 90 - (i + 1) * angle_per_item
-            
-            # NOUVEAU : Application du bleu foncé si c'est la fenêtre active
             is_active = (item['name'] == self.current_name)
             base_color = "#1c456d" if is_active else "#2b2b2b"
             
@@ -151,13 +149,10 @@ class RadialMenu:
             self.highlight_slice(-1)
         else:
             dx = x_mouse - x_center
-            dy = y_mouse - y_center # Modifié pour le calcul Horaire
-            
-            # NOUVEAU : Calcul Trigonométrique Horaire à partir de Midi
+            dy = y_mouse - y_center
             cw_angle = (math.degrees(math.atan2(dx, -dy)) + 360) % 360
             angle_per_item = 360 / len(self.items)
             index = int(cw_angle // angle_per_item)
-            
             self.highlight_slice(index)
             
         self.window.after(15, self.update_hover)
@@ -169,10 +164,8 @@ class RadialMenu:
             self.sound_hover.play()
             
         for i, arc in enumerate(self.arcs):
-            # Conserve le bleu foncé si la souris s'en va de la case active
             is_active = (getattr(self, 'current_name', None) == self.items[i]['name'])
             base_color = "#1c456d" if is_active else "#2b2b2b"
-            
             color = self.hover_color if i == index else base_color
             outline_color = self.accent_color if i == index else "#3d3d3d"
             self.canvas.itemconfig(arc, fill=color, outline=outline_color)

@@ -2,22 +2,31 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+
 DEFAULT_LANGUAGE = "en"
-DEFAULT_SPEED = "fast" #still need this ? 
 DEFAULT_KEYBOARD_LAYOUT = "qwerty"
 
-BASE_DIR = Path(__file__).resolve().parent
+
+def _resolve_base_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
+
+BASE_DIR = _resolve_base_dir()
 LOCALES_DIR = BASE_DIR / "locales"
 
 
 def _load_yaml_file(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
+
     try:
         with path.open("r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
@@ -36,19 +45,6 @@ def _load_all_locales() -> dict[str, dict[str, Any]]:
 _LOCALES = _load_all_locales()
 
 
-def _locale_section(lang: str) -> dict[str, Any]:
-    return _LOCALES.get(lang, _LOCALES.get(DEFAULT_LANGUAGE, {}))
-
-
-def _meta(lang: str) -> dict[str, Any]:
-    return _locale_section(lang).get("meta", {})
-
-
-def _translations(lang: str) -> dict[str, str]:
-    data = _locale_section(lang).get("translations", {})
-    return data if isinstance(data, dict) else {}
-
-
 def _normalize_lang(value: Any) -> str:
     lang = str(value or DEFAULT_LANGUAGE).strip().lower()
     return lang if lang in _LOCALES else DEFAULT_LANGUAGE
@@ -62,9 +58,27 @@ def _extract_lang(config_or_lang: Any) -> str:
     return _normalize_lang(config_or_lang)
 
 
+def _locale_section(lang: str) -> dict[str, Any]:
+    return _LOCALES.get(lang, _LOCALES.get(DEFAULT_LANGUAGE, {}))
+
+
+def _meta(lang: str) -> dict[str, Any]:
+    meta = _locale_section(lang).get("meta", {})
+    return meta if isinstance(meta, dict) else {}
+
+
+def _translations(lang: str) -> dict[str, str]:
+    data = _locale_section(lang).get("translations", {})
+    return data if isinstance(data, dict) else {}
+
+
 def _normalize_label(value: str | None) -> str:
     return (value or "").strip().lower()
 
+
+def reload_locales() -> None:
+    global _LOCALES
+    _LOCALES = _load_all_locales()
 
 
 def get_language_from_settings(settings_path: str = "settings.json") -> str:
@@ -72,7 +86,8 @@ def get_language_from_settings(settings_path: str = "settings.json") -> str:
         try:
             with open(settings_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return _normalize_lang(data.get("language", DEFAULT_LANGUAGE))
+                if isinstance(data, dict):
+                    return _normalize_lang(data.get("language", DEFAULT_LANGUAGE))
         except Exception:
             pass
     return DEFAULT_LANGUAGE
@@ -81,11 +96,13 @@ def get_language_from_settings(settings_path: str = "settings.json") -> str:
 def tr(config_or_lang: Any, text: str, **kwargs) -> str:
     lang = _extract_lang(config_or_lang)
     translated = _translations(lang).get(text, text)
+
     if kwargs:
         try:
             return translated.format(**kwargs)
         except Exception:
             return translated
+
     return translated
 
 
@@ -107,17 +124,15 @@ LANGUAGE_LABELS = {
     },
 }
 
+
 def get_language_options(ui_lang: str | None = None) -> list[str]:
     ui_lang = _normalize_lang(ui_lang or DEFAULT_LANGUAGE)
-    return [
-        LANGUAGE_LABELS["fr"][ui_lang],
-        LANGUAGE_LABELS["pt"][ui_lang],
-        LANGUAGE_LABELS["en"][ui_lang],
-        
-    ]
+    return [LANGUAGE_LABELS["fr"][ui_lang], LANGUAGE_LABELS["en"][ui_lang], LANGUAGE_LABELS["pt"][ui_lang]]
+
 
 def language_code_from_label(label: str) -> str:
     normalized = _normalize_label(label)
+
     for code, labels in LANGUAGE_LABELS.items():
         if normalized == code:
             return code
@@ -128,7 +143,9 @@ def language_code_from_label(label: str) -> str:
             
         }:
             return code
+
     return DEFAULT_LANGUAGE
+
 
 def language_label(code: str, ui_lang: str | None = None) -> str:
     code = _normalize_lang(code)
@@ -136,81 +153,52 @@ def language_label(code: str, ui_lang: str | None = None) -> str:
     return LANGUAGE_LABELS.get(code, LANGUAGE_LABELS[DEFAULT_LANGUAGE])[ui_lang]
 
 
-def _speed_labels(lang: str) -> dict[str, str]:
-    labels = _meta(lang).get("speed_labels", {})
-    return labels if isinstance(labels, dict) else {}
+KEYBOARD_LAYOUT_LABELS = {
+    "qwerty": {
+        "pt": "QWERTY",
+        "en": "QWERTY",
+        "fr": "QWERTY",
+    },
+    "azerty": {
+        "pt": "AZERTY",
+        "en": "AZERTY",
+        "fr": "AZERTY",
+    },
+}
 
 
-def _legacy_speed_values() -> dict[str, str]:
-    result: dict[str, str] = {}
-    for code in _LOCALES:
-        mapping = _meta(code).get("legacy_speed_values", {})
-        if isinstance(mapping, dict):
-            for k, v in mapping.items():
-                result[str(k).strip().lower()] = str(v).strip().lower()
-    return result
-
-
-def normalize_speed_value(value: str | None) -> str:
-    normalized = _normalize_label(value)
-    return _legacy_speed_values().get(normalized, DEFAULT_SPEED)
-
-
-def speed_label(lang: str, value: str) -> str:
-    lang = _normalize_lang(lang)
-    value = normalize_speed_value(value)
-    labels = _speed_labels(lang)
-    if value in labels:
-        return labels[value]
-    fallback = _speed_labels(DEFAULT_LANGUAGE)
-    return fallback.get(value, value)
-
-
-def get_speed_options(lang: str) -> list[str]:
+def get_keyboard_layout_options(ui_lang: str | None = None) -> list[str]:
+    ui_lang = _normalize_lang(ui_lang or DEFAULT_LANGUAGE)
     return [
-        speed_label(lang, "fast"),
-        speed_label(lang, "medium"),
-        speed_label(lang, "slow"),
-    ]
-
-
-def speed_value_from_label(label: str) -> str:
-    normalized = _normalize_label(label)
-    for code in _LOCALES:
-        labels = _speed_labels(code)
-        for value, text in labels.items():
-            if normalized == str(text).strip().lower():
-                return value
-    return normalize_speed_value(label)
-
-
-def _keyboard_layout_labels(lang: str) -> dict[str, str]:
-    labels = _meta(lang).get("keyboard_layout_labels", {})
-    return labels if isinstance(labels, dict) else {}
-
-
-def keyboard_layout_label(lang: str, layout: str) -> str:
-    lang = _normalize_lang(lang)
-    layout = _normalize_label(layout) or DEFAULT_KEYBOARD_LAYOUT
-    labels = _keyboard_layout_labels(lang)
-    if layout in labels:
-        return labels[layout]
-    fallback = _keyboard_layout_labels(DEFAULT_LANGUAGE)
-    return fallback.get(layout, layout)
-
-
-def get_keyboard_layout_options(lang: str) -> list[str]:
-    return [
-        keyboard_layout_label(lang, "qwerty"),
-        keyboard_layout_label(lang, "azerty"),
+        KEYBOARD_LAYOUT_LABELS["qwerty"][ui_lang],
+        KEYBOARD_LAYOUT_LABELS["azerty"][ui_lang],
     ]
 
 
 def keyboard_layout_from_label(label: str) -> str:
     normalized = _normalize_label(label)
-    for code in _LOCALES:
-        labels = _keyboard_layout_labels(code)
-        for layout, text in labels.items():
-            if normalized == str(text).strip().lower():
-                return layout
+
+    for code, labels in KEYBOARD_LAYOUT_LABELS.items():
+        if normalized == code:
+            return code
+        if normalized in {
+            labels["pt"].lower(),
+            labels["en"].lower(),
+            labels["fr"].lower(),
+        }:
+            return code
+
     return DEFAULT_KEYBOARD_LAYOUT
+
+
+def keyboard_layout_label(ui_lang: str, code: str) -> str:
+    ui_lang = _normalize_lang(ui_lang or DEFAULT_LANGUAGE)
+    code = str(code or DEFAULT_KEYBOARD_LAYOUT).strip().lower()
+    if code not in KEYBOARD_LAYOUT_LABELS:
+        code = DEFAULT_KEYBOARD_LAYOUT
+    return KEYBOARD_LAYOUT_LABELS[code][ui_lang]
+
+
+def get_meta_value(config_or_lang: Any, key: str, default: Any = None) -> Any:
+    lang = _extract_lang(config_or_lang)
+    return _meta(lang).get(key, default)

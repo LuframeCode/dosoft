@@ -1,7 +1,7 @@
 @echo off
 :: ============================================================
 ::  DOSOFT - Script de compilation PyInstaller
-::  Prerequis : pip install pyinstaller
+::  Prerequis : pip install pyinstaller pyinstaller-hooks-contrib
 :: ============================================================
 setlocal enabledelayedexpansion
 
@@ -40,16 +40,31 @@ python -m PyInstaller ^
     --add-data="skin;skin" ^
     --add-data="sounds;sounds" ^
     --add-data="logo.ico;." ^
-    --hidden-import=customtkinter ^
+    --add-data="locales;locales" ^
+    --collect-all customtkinter ^
+    --collect-all pystray ^
+    --collect-all pygame ^
     --hidden-import=PIL ^
-    --hidden-import=pygame ^
+    --hidden-import=PIL._imagingtk ^
     --hidden-import=win32api ^
     --hidden-import=win32con ^
     --hidden-import=win32gui ^
     --hidden-import=win32process ^
+    --hidden-import=win32com ^
+    --hidden-import=pythoncom ^
+    --hidden-import=pywintypes ^
     --hidden-import=keyboard ^
-    --collect-all=customtkinter ^
-    --hidden-import=tutorial ^
+    --hidden-import=unicodedata ^
+    --hidden-import=_overlapped ^
+    --hidden-import=requests ^
+    --hidden-import=idna ^
+    --hidden-import=idna.core ^
+    --hidden-import=idna.codec ^
+    --hidden-import=charset_normalizer ^
+    --hidden-import=certifi ^
+    --hidden-import=urllib3 ^
+    --hidden-import=yaml ^
+    --hidden-import=pystray._win32 ^
     "%MAIN_FILE%"
 
 if %ERRORLEVEL% NEQ 0 (

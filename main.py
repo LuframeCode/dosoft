@@ -142,7 +142,7 @@ class OrganizerApp:
         except:
             image = Image.new("RGB", (64, 64), color=(44, 62, 80))
 
-        menu = pystray.Menu(
+         menu = pystray.Menu(
             item(self._t("Afficher/Cacher"), self.toggle_from_tray, default=True),
             item(self._t("Trier Barre Windows"), self.sort_taskbar_from_tray),
             item(self._t("Rafraîchir"), self.refresh_from_tray),
@@ -166,6 +166,12 @@ class OrganizerApp:
             else:
                 self.gui.root.withdraw()
         self.gui.root.after(0, safe_toggle)
+
+    def refresh_from_tray(self, icon, item):
+        self.gui.root.after(0, self.refresh)
+
+    def sort_taskbar_from_tray(self, icon, item):
+        self.gui.root.after(0, self.gui.trigger_sort_taskbar)
 
     def quit_from_tray(self, icon, item):
         self.tray_icon.stop() 

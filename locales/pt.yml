@@ -17,7 +17,9 @@ meta:
     qwerty: QWERTY (US/Internacional)
     azerty: AZERTY (Francês)
 translations:
-  Activer la roue: Ativar roda
+  Activer/Désactiver le compte: Ativar/Desativar conta
+  Aucun compte détecté.: Nenhuma conta detectada.
+  Activer la roue: Ativar roda de seleção
   Afficher/Cacher: Mostrar/Ocultar
   Aucun: Nenhum
   aucun: nenhum
@@ -46,7 +48,7 @@ translations:
   Focus perso précédent: Focar personagem anterior
   Focus perso suivant: Focar próximo personagem
   Gérer les raccourcis avancés par personnage: Gerenciar atalhos avançados por personagem
-  hide: hide
+  hide: esconder
   https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json: https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json
   Impossible de vérifier la version.: Não foi possível verificar a versão.
   Instance détectée: Instância detectada
@@ -78,7 +80,7 @@ translations:
   mouse4: mouse4
   mouse5: mouse5
   Ne plus m'afficher cet avertissement: Não mostrar este aviso novamente
-  Paramètres du jeu et de la roue: Configurações do jogo e da roda
+  Paramètres du jeu et de la roue: Configurações do jogo e da roda de seleção
   Place n°{index}: Posição nº{index}
   Position exacte: Posição exata
   Précédent: Anterior
@@ -91,7 +93,7 @@ translations:
   Reset Settings: Redefinir configurações
   right_click: right_click
   Roue de Focus (Radiale): Roda de foco (radial)
-  'Shutdown complet : Force la fermeture immédiate de DOFRAME': 'Encerramento completo: força o fechamento imediato do DOFRAME'
+  'Shutdown complet : Force la fermeture immédiate de DOSOFT': 'Encerramento completo: força o fechamento imediato do DOSOFT'
   Suivant: Próximo
   Target fixe par pseudo (Même s'ils changent d'ordre): Alvo fixo por personagem (mesmo se a ordem mudar)
   'Target immuable par place. (ex: Ligne 1 focus le 1er de l''initiative)': 'Alvo fixo por posição. (ex.: Linha 1 foca o 1º da iniciativa)'
@@ -122,7 +124,7 @@ translations:
     Versão disponível: {latest_version}
 
 
-    Atualização disponível em Dosoft.fr'
+    Atualização disponível em dosoft.fr'
   'Versions :': 'Versões:'
   Voulez-vous ouvrir la vidéo de présentation sur YouTube ?: Deseja abrir o vídeo de apresentação no YouTube?
   ? 'Êtes-vous sûr de vouloir tout réinitialiser ?
@@ -133,7 +135,6 @@ translations:
 
 
     Todos os seus atalhos serão perdidos.'
-  ⚙️ Gestionnaire de Binds Avancé DOFRAME: ⚙️ Gerenciador avançado de atalhos DOFRAME
   ⚙️ Gestionnaire de Binds Avancé DOSOFT: ⚙️ Gerenciador avançado de atalhos DOSOFT
   ⚙️ Paramètres: ⚙️ Configurações
   ⚠️ Conflit de logiciels détecté: ⚠️ Conflito de softwares detectado
@@ -143,5 +144,5 @@ translations:
   💥 La team a été fermée !: 💥 O time foi fechado!
   💾 Enregistrer les raccourcis: 💾 Salvar atalhos
   🔄 Mode {choice} activé !: 🔄 Modo {choice} ativado!
-  '🔊 Volume Roulette :': '🔊 Volume da roda:'
+  '🔊 Volume Roulette :': '🔊 Volume:'
   🚀 Les pages ont été rangées avec succès !: 🚀 As janelas foram organizadas com sucesso!

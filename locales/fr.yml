@@ -15,6 +15,8 @@ meta:
     qwerty: QWERTY (US/International)
     azerty: AZERTY (Français)
 translations:
+  Activer/Désactiver le compte: Activer/Désactiver le compte
+  Aucun compte détecté.: Aucun compte détecté.
   Activer la roue: Activer la roue
   Afficher/Cacher: Afficher/Cacher
   Aucun: Aucun
@@ -89,7 +91,7 @@ translations:
   Reset Settings: Reset Settings
   right_click: right_click
   Roue de Focus (Radiale): Roue de Focus (Radiale)
-  'Shutdown complet : Force la fermeture immédiate de DOFRAME': 'Shutdown complet : Force la fermeture immédiate de DOFRAME'
+  'Shutdown complet : Force la fermeture immédiate de DOSOFT': 'Shutdown complet : Force la fermeture immédiate de DOSOFT'
   Suivant: Suivant
   Target fixe par pseudo (Même s'ils changent d'ordre): Target fixe par pseudo (Même s'ils changent d'ordre)
   'Target immuable par place. (ex: Ligne 1 focus le 1er de l''initiative)': 'Target immuable par place. (ex: Ligne 1 focus le 1er de l''initiative)'
@@ -131,7 +133,6 @@ translations:
 
 
     Toutes vos touches seront perdues.'
-  ⚙️ Gestionnaire de Binds Avancé DOFRAME: ⚙️ Gestionnaire de Binds Avancé DOFRAME
   ⚙️ Gestionnaire de Binds Avancé DOSOFT: ⚙️ Gestionnaire de Binds Avancé DOSOFT
   ⚙️ Paramètres: ⚙️ Paramètres
   ⚠️ Conflit de logiciels détecté: ⚠️ Conflit de logiciels détecté

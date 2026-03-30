@@ -1,216 +1,309 @@
-import win32gui
-import win32con
 import ctypes
-import win32process
 import time
+from typing import List, Dict, Tuple, Optional
+
+import win32con
+import win32gui
+import win32process
+
 
 class DofusLogic:
     def __init__(self, config):
         self.config = config
-        self.all_accounts = []
-        self.leader_hwnd = None
+        self.all_accounts: List[Dict] = []
+        self.leader_hwnd: Optional[int] = None
 
-    def scan_slots(self):
-        game_version = self.config.data.get("game_version", "Unity")
-        windows_trouvees = []
+
+    def _save_config(self, force: bool = False):
+        if hasattr(self.config, "touch"):
+            try:
+                self.config.touch()
+            except Exception:
+                pass
+
+        try:
+            self.config.save(force=force)
+        except TypeError:
+            self.config.save()
+
+    def _list_game_windows(self, game_version: str) -> List[Tuple[int, str]]:
+        windows_found: List[Tuple[int, str]] = []
 
         def enum_windows_callback(hwnd, extra):
-            if win32gui.IsWindowVisible(hwnd):
-                titre = win32gui.GetWindowText(hwnd)
-                if not titre.strip(): return True
-                
+            try:
+                if not win32gui.IsWindowVisible(hwnd):
+                    return True
+
+                title = win32gui.GetWindowText(hwnd)
+                if not title.strip():
+                    return True
+
                 if game_version == "Unity":
                     if win32gui.GetClassName(hwnd) == "UnityWndClass":
-                        windows_trouvees.append((hwnd, titre))
+                        windows_found.append((hwnd, title))
                 elif game_version == "Rétro":
-                    if "- Dofus Retro" in titre:
-                        windows_trouvees.append((hwnd, titre))
+                    if "- Dofus Retro" in title:
+                        windows_found.append((hwnd, title))
+            except Exception:
+                pass
             return True
 
         win32gui.EnumWindows(enum_windows_callback, None)
+        return windows_found
 
-        nouveaux_comptes = []
-        for hwnd, titre in windows_trouvees:
-            titre_clean = titre.strip()
-            
-            if game_version == "Unity":
-                if titre_clean.lower().startswith("dofus"): continue
-                parts = titre_clean.split(" - ")
-                pseudo = parts[0].strip()
-                classe = parts[1].strip() if len(parts) > 1 else "Inconnu"
-            else:
-                # Mode Rétro : "Pseudo - Dofus Retro v1.47.21"
-                parts = titre_clean.split(" - Dofus Retro")
-                pseudo = parts[0].strip()
-                # NOUVEAU : On récupère la classe si on l'a déjà choisie, sinon "Inconnu"
-                classe = self.config.data["classes"].get(pseudo, "Inconnu")
-                
-            self.config.data["classes"][pseudo] = classe
-            etat_actif = self.config.data["accounts_state"].get(pseudo, True)
-            equipe = self.config.data["accounts_team"].get(pseudo, "Team 1")
-            
-            nouveaux_comptes.append({'name': pseudo, 'hwnd': hwnd, 'active': etat_actif, 'team': equipe, 'classe': classe})
+    def _parse_account_from_window(self, hwnd: int, title: str, game_version: str) -> Optional[Dict]:
+        clean_title = title.strip()
+        if not clean_title:
+            return None
 
-        custom_order = self.config.data.get("custom_order", [])
-        
-        for acc in nouveaux_comptes:
-            if acc['name'] not in custom_order:
-                custom_order.append(acc['name'])
-                
+        if game_version == "Unity":
+            if clean_title.lower().startswith("dofus"):
+                return None
+            parts = clean_title.split(" - ")
+            pseudo = parts[0].strip()
+            classe = parts[1].strip() if len(parts) > 1 else "Inconnu"
+        else:
+            parts = clean_title.split(" - Dofus Retro")
+            pseudo = parts[0].strip()
+            classe = self.config.data.get("classes", {}).get(pseudo, "Inconnu")
+
+        active_state = self.config.data.get("accounts_state", {}).get(pseudo, True)
+        team = self.config.data.get("accounts_team", {}).get(pseudo, "Team 1")
+
+        return {
+            "name": pseudo,
+            "hwnd": hwnd,
+            "active": active_state,
+            "team": team,
+            "classe": classe,
+        }
+
+    def _sync_classes(self, accounts: List[Dict]) -> bool:
+        changed = False
+        classes_map = self.config.data.setdefault("classes", {})
+
+        for acc in accounts:
+            pseudo = acc["name"]
+            classe = acc.get("classe", "Inconnu")
+            if classes_map.get(pseudo) != classe:
+                classes_map[pseudo] = classe
+                changed = True
+
+        return changed
+
+    def _sync_custom_order(self, accounts: List[Dict]) -> bool:
+        changed = False
+        custom_order = list(self.config.data.get("custom_order", []))
+        account_names = [acc["name"] for acc in accounts]
+
+        for name in account_names:
+            if name not in custom_order:
+                custom_order.append(name)
+                changed = True
+
         if len(custom_order) > 50:
-            active_names = [acc['name'] for acc in nouveaux_comptes]
-            inactive = [n for n in custom_order if n not in active_names]
+            inactive = [name for name in custom_order if name not in account_names]
             while len(custom_order) > 50 and inactive:
                 to_remove = inactive.pop(0)
                 if to_remove in custom_order:
                     custom_order.remove(to_remove)
-                    
-        self.config.data["custom_order"] = custom_order
-        self.config.save()
-        
-        self.all_accounts = sorted(nouveaux_comptes, key=lambda x: custom_order.index(x['name']))
-        
+                    changed = True
+
+        if changed:
+            self.config.data["custom_order"] = custom_order
+
+        return changed
+
+    def _sort_accounts(self, accounts: List[Dict]) -> List[Dict]:
+        custom_order = self.config.data.get("custom_order", [])
+        order_map = {name: idx for idx, name in enumerate(custom_order)}
+        return sorted(accounts, key=lambda acc: order_map.get(acc["name"], 10**9))
+
+    def _refresh_leader_handle(self):
         self.leader_hwnd = None
         leader_name = self.config.data.get("leader_name", "")
         for acc in self.all_accounts:
-            if acc['name'] == leader_name: self.leader_hwnd = acc['hwnd']
-                
+            if acc["name"] == leader_name:
+                self.leader_hwnd = acc["hwnd"]
+                break
+
+
+    def scan_slots(self):
+        game_version = self.config.data.get("game_version", "Unity")
+
+        windows_found = self._list_game_windows(game_version)
+
+        parsed_accounts: List[Dict] = []
+        for hwnd, title in windows_found:
+            account = self._parse_account_from_window(hwnd, title, game_version)
+            if account is not None:
+                parsed_accounts.append(account)
+
+        classes_changed = self._sync_classes(parsed_accounts)
+        order_changed = self._sync_custom_order(parsed_accounts)
+
+        self.all_accounts = self._sort_accounts(parsed_accounts)
+        self._refresh_leader_handle()
+
+        if classes_changed or order_changed:
+            self._save_config()
+
         return self.all_accounts
+
 
     def get_cycle_list(self):
         mode = self.config.data.get("current_mode", "ALL")
-        return [acc for acc in self.all_accounts if acc['active'] and (mode == "ALL" or acc['team'] == mode)]
+        return [
+            acc
+            for acc in self.all_accounts
+            if acc.get("active", True) and (mode == "ALL" or acc.get("team") == mode)
+        ]
+
 
     def _update_global_order_from_active(self, active_accs):
-        order = self.config.data.get("custom_order", [])
-        indices = []
-        valid_names = []
-        for acc in active_accs:
-            if acc['name'] in order:
-                indices.append(order.index(acc['name']))
-                valid_names.append(acc['name'])
-                
-        indices.sort()
-        for i, name in zip(indices, valid_names):
-            order[i] = name
-            
+        order = list(self.config.data.get("custom_order", []))
+        active_names = [acc["name"] for acc in active_accs]
+        active_name_set = set(active_names)
+
+        target_positions = [idx for idx, name in enumerate(order) if name in active_name_set]
+
+        for pos, name in zip(target_positions, active_names):
+            order[pos] = name
+
         self.config.data["custom_order"] = order
-        self.config.save()
-        self.all_accounts.sort(key=lambda x: order.index(x['name']))
+        self._save_config()
+
+        order_map = {name: idx for idx, name in enumerate(order)}
+        self.all_accounts.sort(key=lambda acc: order_map.get(acc["name"], 10**9))
 
     def set_account_position(self, name, new_index):
         active_accs = self.get_cycle_list()
-        names = [a['name'] for a in active_accs]
-        if name not in names: return
-        idx = names.index(name)
-        acc_to_move = active_accs.pop(idx)
+        names = [acc["name"] for acc in active_accs]
+        if name not in names:
+            return
+
+        old_index = names.index(name)
+        acc_to_move = active_accs.pop(old_index)
         active_accs.insert(new_index, acc_to_move)
         self._update_global_order_from_active(active_accs)
 
     def move_account(self, name, direction):
         active_accs = self.get_cycle_list()
-        names = [a['name'] for a in active_accs]
-        if name not in names: return
+        names = [acc["name"] for acc in active_accs]
+        if name not in names:
+            return
+
         idx = names.index(name)
         new_idx = idx + direction
         if 0 <= new_idx < len(names):
             active_accs[idx], active_accs[new_idx] = active_accs[new_idx], active_accs[idx]
             self._update_global_order_from_active(active_accs)
 
+
     def toggle_account(self, name, is_active):
         for acc in self.all_accounts:
-            if acc['name'] == name: acc['active'] = is_active
-        self.config.data["accounts_state"][name] = is_active
-        self.config.save()
+            if acc["name"] == name:
+                acc["active"] = is_active
+                break
+
+        self.config.data.setdefault("accounts_state", {})[name] = is_active
+        self._save_config()
 
     def change_team(self, name, new_team):
         for acc in self.all_accounts:
-            if acc['name'] == name: acc['team'] = new_team
-        self.config.data["accounts_team"][name] = new_team
-        self.config.save()
+            if acc["name"] == name:
+                acc["team"] = new_team
+                break
+
+        self.config.data.setdefault("accounts_team", {})[name] = new_team
+        self._save_config()
 
     def set_mode(self, mode):
         self.config.data["current_mode"] = mode
-        self.config.save()
+        self._save_config()
 
     def set_leader(self, name):
-        self.leader_hwnd = None
         self.config.data["leader_name"] = name
-        self.config.save()
-        for acc in self.all_accounts:
-            if acc['name'] == name: self.leader_hwnd = acc['hwnd']
+        self._save_config()
+        self._refresh_leader_handle()
+
+    def _terminate_hwnd_process(self, hwnd):
+        if not hwnd:
+            return
+
+        try:
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
+            ctypes.windll.kernel32.TerminateProcess(handle, 0)
+            ctypes.windll.kernel32.CloseHandle(handle)
+        except Exception:
+            pass
 
     def close_account_window(self, name):
         for acc in self.all_accounts:
-            if acc['name'] == name:
-                hwnd = acc['hwnd']
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                try:
-                    handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
-                    ctypes.windll.kernel32.TerminateProcess(handle, 0)
-                    ctypes.windll.kernel32.CloseHandle(handle)
-                except Exception: pass
+            if acc["name"] == name:
+                self._terminate_hwnd_process(acc["hwnd"])
                 break
 
     def close_all_active_accounts(self):
-        active_accs = self.get_cycle_list()
-        for acc in active_accs:
-            hwnd = acc['hwnd']
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            try:
-                handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
-                ctypes.windll.kernel32.TerminateProcess(handle, 0)
-                ctypes.windll.kernel32.CloseHandle(handle)
-            except: pass
+        for acc in self.get_cycle_list():
+            self._terminate_hwnd_process(acc["hwnd"])
 
     def focus_window(self, hwnd):
-        if not hwnd: return
+        if not hwnd:
+            return
+
         try:
-            if win32gui.IsIconic(hwnd): win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            tid, pid = win32process.GetWindowThreadProcessId(hwnd)
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
             ctypes.windll.user32.AllowSetForegroundWindow(pid)
+
             ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)
             ctypes.windll.user32.keybd_event(0x12, 0, 2, 0)
+
             win32gui.SetForegroundWindow(hwnd)
-        except: pass
+        except Exception:
+            pass
 
     def sort_taskbar(self):
         active_accs = self.get_cycle_list()
-        if not active_accs: return
+        if not active_accs:
+            return
+
         try:
             for acc in active_accs:
-                win32gui.ShowWindow(acc['hwnd'], win32con.SW_HIDE)
+                win32gui.ShowWindow(acc["hwnd"], win32con.SW_HIDE)
             time.sleep(0.3)
+
             for acc in active_accs:
-                win32gui.ShowWindow(acc['hwnd'], win32con.SW_SHOW)
-                time.sleep(0.1) 
+                win32gui.ShowWindow(acc["hwnd"], win32con.SW_SHOW)
+                time.sleep(0.1)
+
             if self.leader_hwnd:
                 self.focus_window(self.leader_hwnd)
-        except Exception: pass
+        except Exception:
+            pass
+
 
     def execute_advanced_bind(self, source, identifier):
-        """ Gère le focus dynamique et retourne le nouvel index pour la boucle. """
-        active_list = self.get_cycle_list()
-        if not active_list: return -1
-
-        target_hwnd = None
-        new_global_idx = -1
+        cycle_list = self.get_cycle_list()
+        if not cycle_list:
+            return -1
 
         if source == "cycle":
-            row_index = int(identifier)
-            if row_index < len(active_list):
-                target_hwnd = active_list[row_index]['hwnd']
-                new_global_idx = row_index
+            idx = identifier
+            if 0 <= idx < len(cycle_list):
+                self.focus_window(cycle_list[idx]["hwnd"])
+                return idx
+            return -1
 
-        elif source == "bind":
-            target_pseudo = str(identifier)
-            for index, acc in enumerate(active_list):
-                if acc['name'] == target_pseudo:
-                    target_hwnd = acc['hwnd']
-                    new_global_idx = index
-                    break
-        
-        if target_hwnd:
-            self.focus_window(target_hwnd)
-            return new_global_idx 
+        if source == "bind":
+            pseudo = identifier
+            for idx, acc in enumerate(cycle_list):
+                if acc["name"] == pseudo:
+                    self.focus_window(acc["hwnd"])
+                    return idx
+
         return -1

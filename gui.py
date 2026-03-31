@@ -68,6 +68,7 @@ class SettingsWindow(ctk.CTkToplevel):
         btn_close.pack(pady=(20, 10))
 
     def save_settings(self):
+        previous_language = self.app.config.data.get("language", "fr")
         self.app.config.data["radial_menu_active"] = self.var_radial.get()
         self.app.config.data["language"] = self.var_language.get()
         self.app.config.data["keyboard_layout"] = self.var_keyboard_layout.get()
@@ -75,6 +76,12 @@ class SettingsWindow(ctk.CTkToplevel):
         self.app.keymaps.set_layout(self.var_keyboard_layout.get())
         self.app.setup_hotkeys()
         self.app.config.save()
+        self.parent.apply_translations()
+
+        if previous_language != self.var_language.get():
+            # Reconstruit la fenêtre des paramètres pour appliquer les nouveaux libellés immédiatement.
+            self.destroy()
+            self.parent.open_settings()
 
 
 class OrganizerGUI:
@@ -116,7 +123,8 @@ class OrganizerGUI:
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
         
-        ctk.CTkLabel(self.header_f, text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"), font=ctk.CTkFont(size=20, weight="bold")).pack(side="left")
+        self.lbl_app_title = ctk.CTkLabel(self.header_f, text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"), font=ctk.CTkFont(size=20, weight="bold"))
+        self.lbl_app_title.pack(side="left")
         
         self.btn_settings = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_settings", "⚙️ Paramètres"), fg_color="#34495e", hover_color="#2c3e50", width=120, command=self.open_settings)
         self.btn_settings.pack(side="right")
@@ -134,15 +142,15 @@ class OrganizerGUI:
         self.frame_mode = ctk.CTkFrame(self.root)
         self.frame_mode.pack(fill="x", padx=15, pady=5)
         
-        lbl_ctrl = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_controls", "Contrôler :"))
-        lbl_ctrl.pack(side="left", padx=10, pady=5)
+        self.lbl_controls = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_controls", "Contrôler :"))
+        self.lbl_controls.pack(side="left", padx=10, pady=5)
         
         self.combo_mode = ctk.CTkOptionMenu(self.frame_mode, values=["ALL", "Team 1", "Team 2"], command=self.on_mode_change)
         self.combo_mode.set(cfg.get("current_mode", "ALL"))
         self.combo_mode.pack(side="left", padx=5, pady=5)
 
-        lbl_version = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_versions", "Versions :"))
-        lbl_version.pack(side="left", padx=(20, 5), pady=5)
+        self.lbl_versions = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_versions", "Versions :"))
+        self.lbl_versions.pack(side="left", padx=(20, 5), pady=5)
         
         self.combo_version = ctk.CTkOptionMenu(self.frame_mode, values=["Unity", "Rétro"], width=100, fg_color="#8e44ad", button_color="#9b59b6", button_hover_color="#8e44ad", command=self.on_version_change)
         self.combo_version.set(cfg.get("game_version", "Unity"))
@@ -158,7 +166,8 @@ class OrganizerGUI:
 
         self.frame_keys = ctk.CTkFrame(self.root)
         self.frame_keys.pack(fill="x", padx=15, pady=10)
-        ctk.CTkLabel(self.frame_keys, text=self.app.i18n.t("label_keyboard_shortcuts", "Raccourcis Clavier"), font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=6, pady=5)
+        self.lbl_keyboard_shortcuts = ctk.CTkLabel(self.frame_keys, text=self.app.i18n.t("label_keyboard_shortcuts", "Raccourcis Clavier"), font=ctk.CTkFont(weight="bold"))
+        self.lbl_keyboard_shortcuts.grid(row=0, column=0, columnspan=6, pady=5)
 
         self.create_hotkey_row(self.frame_keys, "Précédent", "prev_key", 1, 0, "Focus perso précédent")
         self.create_hotkey_row(self.frame_keys, "Suivant", "next_key", 1, 3, "Focus perso suivant")
@@ -218,6 +227,20 @@ class OrganizerGUI:
         self.lbl_feedback.pack(expand=True)
         
         self.skin_cache = {} 
+
+    def apply_translations(self):
+        none_label = self.app.i18n.t("none", "Aucun")
+        self.root.title(self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
+        self.lbl_app_title.configure(text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
+        self.btn_settings.configure(text=self.app.i18n.t("header_settings", "⚙️ Paramètres"))
+        self.btn_tuto.configure(text=self.app.i18n.t("header_tutorial", "🎓 Tuto"))
+        self.btn_off.configure(text=self.app.i18n.t("header_off", "🔴 OFF"))
+        self.lbl_controls.configure(text=self.app.i18n.t("label_controls", "Contrôler :"))
+        self.lbl_versions.configure(text=self.app.i18n.t("label_versions", "Versions :"))
+        self.lbl_keyboard_shortcuts.configure(text=self.app.i18n.t("label_keyboard_shortcuts", "Raccourcis Clavier"))
+        for button in self.hotkey_btns.values():
+            if button.cget("text") in {"Aucun", "None", "Nenhum"}:
+                button.configure(text=none_label)
 
     def open_settings(self):
         if not hasattr(self, 'settings_window') or not self.settings_window.winfo_exists():

@@ -1,0 +1,17 @@
+{
+  "app_title": "DOSOFT v1.1.1",
+  "settings_title": "⚙️ Configurações",
+  "settings_close": "Fechar",
+  "settings_radial": "Roda de Foco (Radial)",
+  "settings_radial_enable": "Ativar roda",
+  "settings_hotkey": "Atalho:",
+  "settings_language": "Idioma",
+  "settings_keyboard_layout": "Layout do teclado",
+  "none": "Nenhum",
+  "header_settings": "⚙️ Configurações",
+  "header_tutorial": "🎓 Tutorial",
+  "header_off": "🔴 OFF",
+  "label_controls": "Controlar:",
+  "label_versions": "Versões:",
+  "label_keyboard_shortcuts": "Atalhos de Teclado"
+}

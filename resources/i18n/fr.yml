@@ -1,0 +1,17 @@
+{
+  "app_title": "DOSOFT v1.1.1",
+  "settings_title": "⚙️ Paramètres",
+  "settings_close": "Fermer",
+  "settings_radial": "Roue de Focus (Radiale)",
+  "settings_radial_enable": "Activer la roue",
+  "settings_hotkey": "Raccourci :",
+  "settings_language": "Langue",
+  "settings_keyboard_layout": "Disposition clavier",
+  "none": "Aucun",
+  "header_settings": "⚙️ Paramètres",
+  "header_tutorial": "🎓 Tuto",
+  "header_off": "🔴 OFF",
+  "label_controls": "Contrôler :",
+  "label_versions": "Versions :",
+  "label_keyboard_shortcuts": "Raccourcis Clavier"
+}

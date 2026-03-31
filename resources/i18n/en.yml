@@ -1,0 +1,17 @@
+{
+  "app_title": "DOSOFT v1.1.1",
+  "settings_title": "⚙️ Settings",
+  "settings_close": "Close",
+  "settings_radial": "Focus Wheel (Radial)",
+  "settings_radial_enable": "Enable wheel",
+  "settings_hotkey": "Shortcut:",
+  "settings_language": "Language",
+  "settings_keyboard_layout": "Keyboard layout",
+  "none": "None",
+  "header_settings": "⚙️ Settings",
+  "header_tutorial": "🎓 Tutorial",
+  "header_off": "🔴 OFF",
+  "label_controls": "Control:",
+  "label_versions": "Versions:",
+  "label_keyboard_shortcuts": "Keyboard Shortcuts"
+}

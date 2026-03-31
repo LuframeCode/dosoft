@@ -13,25 +13,12 @@ from PIL import Image, ImageTk
 ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme("blue")  
 
-# --- LE DICTIONNAIRE MAGIQUE DES SIGNAUX ÉLECTRIQUES (AZERTY) ---
-AZERTY_TO_SCAN = {
-    'a': 16, 'z': 17, 'e': 18, 'r': 19, 't': 20, 'y': 21, 'u': 22, 'i': 23, 'o': 24, 'p': 25,
-    'q': 30, 's': 31, 'd': 32, 'f': 33, 'g': 34, 'h': 35, 'j': 36, 'k': 37, 'l': 38, 'm': 39,
-    'w': 44, 'x': 45, 'c': 46, 'v': 47, 'b': 48, 'n': 49,
-    '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10, '0': 11,
-    'f1': 59, 'f2': 60, 'f3': 61, 'f4': 62, 'f5': 63, 'f6': 64, 'f7': 65, 'f8': 66, 'f9': 67, 'f10': 68, 'f11': 87, 'f12': 88,
-    'tab': 15, 'enter': 28, 'space': 57, 'esc': 1, 'backspace': 14,
-    '²': 41, '&': 2, 'é': 3, '"': 4, "'": 5, '(': 6, '-': 7, 'è': 8, '_': 9, 'ç': 10, 'à': 11, ')': 12, '=': 13,
-    'num 1': 79, 'num 2': 80, 'num 3': 81, 'num 4': 75, 'num 5': 76, 'num 6': 77, 'num 7': 71, 'num 8': 72, 'num 9': 73, 'num 0': 82,
-}
-SCAN_TO_AZERTY = {v: k for k, v in AZERTY_TO_SCAN.items()}
-
 class SettingsWindow(ctk.CTkToplevel):
     def __init__(self, parent_gui):
         super().__init__(parent_gui.root)
         self.parent = parent_gui
         self.app = parent_gui.app
-        self.title("⚙️ Paramètres")
+        self.title(self.app.i18n.t("settings_title", "⚙️ Paramètres"))
         self.geometry("450x500")
         self.minsize(350, 300)
         self.attributes("-topmost", True)
@@ -42,34 +29,51 @@ class SettingsWindow(ctk.CTkToplevel):
 
         title_font = ctk.CTkFont(size=16, weight="bold")
 
-        ctk.CTkLabel(self.scroll_container, text="Roue de Focus (Radiale)", font=title_font).pack(pady=(20, 5))
+        ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_radial", "Roue de Focus (Radiale)"), font=title_font).pack(pady=(20, 5))
         frame_radial = ctk.CTkFrame(self.scroll_container)
         frame_radial.pack(fill="x", padx=10, pady=5)
         
         self.var_radial = ctk.BooleanVar(value=self.app.config.data.get("radial_menu_active", True))
-        sw_radial = ctk.CTkSwitch(frame_radial, text="Activer la roue", variable=self.var_radial, command=self.save_settings)
+        sw_radial = ctk.CTkSwitch(frame_radial, text=self.app.i18n.t("settings_radial_enable", "Activer la roue"), variable=self.var_radial, command=self.save_settings)
         sw_radial.pack(pady=10)
 
         frame_hk = ctk.CTkFrame(frame_radial, fg_color="transparent")
         frame_hk.pack(pady=(0, 10))
         
-        lbl_hk = ctk.CTkLabel(frame_hk, text="Raccourci :")
+        lbl_hk = ctk.CTkLabel(frame_hk, text=self.app.i18n.t("settings_hotkey", "Raccourci :"))
         lbl_hk.pack(side="left", padx=5)
         
         current_val = self.app.config.data.get("radial_menu_hotkey", "alt+left_click")
-        btn_hk = ctk.CTkButton(frame_hk, text=current_val if current_val else "Aucun", width=120, command=lambda: self.parent.catch_key("radial_menu_hotkey", btn_hk, allow_mouse=True))
+        btn_hk = ctk.CTkButton(frame_hk, text=current_val if current_val else self.app.i18n.t("none", "Aucun"), width=120, command=lambda: self.parent.catch_key("radial_menu_hotkey", btn_hk, allow_mouse=True))
         btn_hk.pack(side="left", padx=5)
         
         self.parent.hotkey_btns["radial_menu_hotkey"] = btn_hk
 
         btn_x = ctk.CTkButton(frame_hk, text="✖", width=25, fg_color="#c0392b", hover_color="#e74c3c", command=lambda: self.parent.clear_key("radial_menu_hotkey", btn_hk))
         btn_x.pack(side="left", padx=5)
+
+        frame_language = ctk.CTkFrame(self.scroll_container)
+        frame_language.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_language, text=self.app.i18n.t("settings_language", "Langue")).pack(side="left", padx=8, pady=8)
+        self.var_language = ctk.StringVar(value=self.app.config.data.get("language", "fr"))
+        ctk.CTkOptionMenu(frame_language, values=["fr", "en", "pt"], variable=self.var_language, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
+
+        frame_keyboard = ctk.CTkFrame(self.scroll_container)
+        frame_keyboard.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_keyboard, text=self.app.i18n.t("settings_keyboard_layout", "Disposition clavier")).pack(side="left", padx=8, pady=8)
+        self.var_keyboard_layout = ctk.StringVar(value=self.app.config.data.get("keyboard_layout", "azerty_fr"))
+        ctk.CTkOptionMenu(frame_keyboard, values=["azerty_fr", "qwerty_us"], variable=self.var_keyboard_layout, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
         
-        btn_close = ctk.CTkButton(self.scroll_container, text="Fermer", fg_color="#7f8c8d", command=self.destroy)
+        btn_close = ctk.CTkButton(self.scroll_container, text=self.app.i18n.t("settings_close", "Fermer"), fg_color="#7f8c8d", command=self.destroy)
         btn_close.pack(pady=(20, 10))
 
     def save_settings(self):
         self.app.config.data["radial_menu_active"] = self.var_radial.get()
+        self.app.config.data["language"] = self.var_language.get()
+        self.app.config.data["keyboard_layout"] = self.var_keyboard_layout.get()
+        self.app.i18n.set_locale(self.var_language.get())
+        self.app.keymaps.set_layout(self.var_keyboard_layout.get())
+        self.app.setup_hotkeys()
         self.app.config.save()
 
 
@@ -77,7 +81,7 @@ class OrganizerGUI:
     def __init__(self, app_controller):
         self.app = app_controller
         self.root = ctk.CTk()
-        self.root.title("DOSOFT v1.1.1")
+        self.root.title(self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
         
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
@@ -112,17 +116,17 @@ class OrganizerGUI:
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
         
-        ctk.CTkLabel(self.header_f, text="DOSOFT v1.1.1", font=ctk.CTkFont(size=20, weight="bold")).pack(side="left")
+        ctk.CTkLabel(self.header_f, text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"), font=ctk.CTkFont(size=20, weight="bold")).pack(side="left")
         
-        self.btn_settings = ctk.CTkButton(self.header_f, text="⚙️ Paramètres", fg_color="#34495e", hover_color="#2c3e50", width=120, command=self.open_settings)
+        self.btn_settings = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_settings", "⚙️ Paramètres"), fg_color="#34495e", hover_color="#2c3e50", width=120, command=self.open_settings)
         self.btn_settings.pack(side="right")
         self.bind_tooltip(self.btn_settings, "Paramétrer la roue radiale")
 
-        self.btn_tuto = ctk.CTkButton(self.header_f, text="🎓 Tuto", fg_color="#8e44ad", hover_color="#9b59b6", width=80, command=self.launch_tutorial)
+        self.btn_tuto = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_tutorial", "🎓 Tuto"), fg_color="#8e44ad", hover_color="#9b59b6", width=80, command=self.launch_tutorial)
         self.btn_tuto.pack(side="right", padx=(0, 10))
 
         # --- NOUVEAU BOUTON OFF ---
-        self.btn_off = ctk.CTkButton(self.header_f, text="🔴 OFF", fg_color="#c0392b", hover_color="#e74c3c", width=60, command=self.app.quit_app)
+        self.btn_off = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_off", "🔴 OFF"), fg_color="#c0392b", hover_color="#e74c3c", width=60, command=self.app.quit_app)
         self.btn_off.pack(side="right", padx=(0, 10))
         self.bind_tooltip(self.btn_off, "Fermer complètement DOSOFT")
         # --------------------------
@@ -130,14 +134,14 @@ class OrganizerGUI:
         self.frame_mode = ctk.CTkFrame(self.root)
         self.frame_mode.pack(fill="x", padx=15, pady=5)
         
-        lbl_ctrl = ctk.CTkLabel(self.frame_mode, text="Contrôler :")
+        lbl_ctrl = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_controls", "Contrôler :"))
         lbl_ctrl.pack(side="left", padx=10, pady=5)
         
         self.combo_mode = ctk.CTkOptionMenu(self.frame_mode, values=["ALL", "Team 1", "Team 2"], command=self.on_mode_change)
         self.combo_mode.set(cfg.get("current_mode", "ALL"))
         self.combo_mode.pack(side="left", padx=5, pady=5)
 
-        lbl_version = ctk.CTkLabel(self.frame_mode, text="Versions :")
+        lbl_version = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_versions", "Versions :"))
         lbl_version.pack(side="left", padx=(20, 5), pady=5)
         
         self.combo_version = ctk.CTkOptionMenu(self.frame_mode, values=["Unity", "Rétro"], width=100, fg_color="#8e44ad", button_color="#9b59b6", button_hover_color="#8e44ad", command=self.on_version_change)
@@ -154,7 +158,7 @@ class OrganizerGUI:
 
         self.frame_keys = ctk.CTkFrame(self.root)
         self.frame_keys.pack(fill="x", padx=15, pady=10)
-        ctk.CTkLabel(self.frame_keys, text="Raccourcis Clavier", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=6, pady=5)
+        ctk.CTkLabel(self.frame_keys, text=self.app.i18n.t("label_keyboard_shortcuts", "Raccourcis Clavier"), font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=6, pady=5)
 
         self.create_hotkey_row(self.frame_keys, "Précédent", "prev_key", 1, 0, "Focus perso précédent")
         self.create_hotkey_row(self.frame_keys, "Suivant", "next_key", 1, 3, "Focus perso suivant")
@@ -381,7 +385,7 @@ class OrganizerGUI:
         if tooltip_txt: self.bind_tooltip(lbl, tooltip_txt)
         
         current_val = self.app.config.data.get(config_key, "")
-        btn = ctk.CTkButton(parent, text=current_val if current_val else "Aucun", width=80, command=lambda: self.catch_key(config_key, btn, allow_mouse=True))
+        btn = ctk.CTkButton(parent, text=current_val if current_val else self.app.i18n.t("none", "Aucun"), width=80, command=lambda: self.catch_key(config_key, btn, allow_mouse=True))
         btn.grid(row=row, column=col_offset+1, padx=2, pady=2)
         
         self.hotkey_btns[config_key] = btn 
@@ -426,8 +430,9 @@ class OrganizerGUI:
                         current_mods = get_current_mods()
                         combined = list(set(mods_before_click + current_mods))
                         captured_mods = [m for m in ['ctrl', 'alt', 'shift'] if m in combined]
-                        if e.scan_code in SCAN_TO_AZERTY:
-                            captured_key = SCAN_TO_AZERTY[e.scan_code]
+                        mapped_key = self.app.keymaps.scan_to_key_name(e.scan_code)
+                        if mapped_key:
+                            captured_key = mapped_key
                         else:
                             captured_key = e.name
                         done_event.set()
@@ -452,7 +457,9 @@ class OrganizerGUI:
                 if e.event_type == keyboard.KEY_DOWN:
                     if e.name not in MOD_NAMES:
                         captured_mods = [m for m in ['ctrl', 'alt', 'shift'] if m in held_mods]
-                        if e.scan_code in SCAN_TO_AZERTY: captured_key = SCAN_TO_AZERTY[e.scan_code]
+                        mapped_key = self.app.keymaps.scan_to_key_name(e.scan_code)
+                        if mapped_key:
+                            captured_key = mapped_key
                         else: captured_key = e.name
             hook = keyboard.hook(on_key, suppress=True)
 
@@ -494,12 +501,12 @@ class OrganizerGUI:
                     if self.app.config.data[k] == new_value:
                         self.app.config.data[k] = ""
                         if k in self.hotkey_btns:
-                            self.hotkey_btns[k].configure(text="Aucun", fg_color=["#3a7ebf", "#1f538d"])
+                            self.hotkey_btns[k].configure(text=self.app.i18n.t("none", "Aucun"), fg_color=["#3a7ebf", "#1f538d"])
 
         self.app.config.data[config_key] = new_value
         self.app.config.save()
         
-        btn.configure(text=new_value if new_value else "Aucun", fg_color=["#3a7ebf", "#1f538d"])
+        btn.configure(text=new_value if new_value else self.app.i18n.t("none", "Aucun"), fg_color=["#3a7ebf", "#1f538d"])
         self.app.setup_hotkeys()
         self.is_listening = False
 
@@ -657,7 +664,7 @@ class CharManagerWindow(ctk.CTkToplevel):
         if key_name == "esc": key_name = "" 
         
         self.entry_dict[dict_key] = key_name
-        btn.configure(text=key_name.upper() if key_name else "Aucun", fg_color=["#3a7ebf", "#1f538d"])
+        btn.configure(text=key_name.upper() if key_name else self.app.i18n.t("none", "Aucun"), fg_color=["#3a7ebf", "#1f538d"])
         self.parent.is_listening = False
 
     def update_content(self):
@@ -686,7 +693,7 @@ class CharManagerWindow(ctk.CTkToplevel):
                 base_key = self.get_base_key(full_bind)
                 self.entry_dict[i] = base_key
                 
-                btn = ctk.CTkButton(frame_row, text=base_key.upper() if base_key else "Aucun", width=80)
+                btn = ctk.CTkButton(frame_row, text=base_key.upper() if base_key else self.app.i18n.t("none", "Aucun"), width=80)
                 btn.configure(command=lambda k=i, b=btn: self.catch_key(k, b))
                 btn.pack(side="right", padx=15, pady=10)
                 
@@ -716,7 +723,7 @@ class CharManagerWindow(ctk.CTkToplevel):
                 base_key = self.get_base_key(full_bind)
                 self.entry_dict[pseudo] = base_key
                 
-                btn = ctk.CTkButton(frame_row, text=base_key.upper() if base_key else "Aucun", width=80)
+                btn = ctk.CTkButton(frame_row, text=base_key.upper() if base_key else self.app.i18n.t("none", "Aucun"), width=80)
                 btn.configure(command=lambda k=pseudo, b=btn: self.catch_key(k, b))
                 btn.pack(side="right", padx=15, pady=10)
                 

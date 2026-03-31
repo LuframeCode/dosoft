@@ -195,7 +195,12 @@ class OrganizerApp:
             vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1) 
             if vk: return vk
             
-        if len(key_str) == 1: return ord(key_str.upper())
+        if len(key_str) == 1:
+            vk_scan = ctypes.windll.user32.VkKeyScanW(ord(key_str))
+            vk = vk_scan & 0xFF
+            if vk != 0xFF:
+                return vk
+            return ord(key_str.upper())
         if key_str.startswith('f') and key_str[1:].isdigit():
             return 0x6F + int(key_str[1:])
         return None

@@ -23,11 +23,6 @@ except:
     try: ctypes.windll.user32.SetProcessDPIAware()
     except: pass
 
-# --- FORCAGE DU CLAVIER EN AZERTY FRANCAIS (0x040C) ---
-try:
-    ctypes.windll.user32.LoadKeyboardLayoutW("0000040C", 1 | 0x00000100)
-except: pass
-
 try:
     from winrt.windows.ui.notifications.management import UserNotificationListener
     from winrt.windows.ui.notifications import NotificationKinds
@@ -39,22 +34,30 @@ from config_manager import Config
 from logic import DofusLogic
 from gui import OrganizerGUI
 from radial_menu import RadialMenu
+from i18n_manager import I18nManager
+from keyboard_layout_manager import KeyboardLayoutManager
 
-# --- LE DICTIONNAIRE MAGIQUE DES SIGNAUX ÉLECTRIQUES (AZERTY) ---
-AZERTY_TO_SCAN = {
-    'a': 16, 'z': 17, 'e': 18, 'r': 19, 't': 20, 'y': 21, 'u': 22, 'i': 23, 'o': 24, 'p': 25,
-    'q': 30, 's': 31, 'd': 32, 'f': 33, 'g': 34, 'h': 35, 'j': 36, 'k': 37, 'l': 38, 'm': 39,
-    'w': 44, 'x': 45, 'c': 46, 'v': 47, 'b': 48, 'n': 49,
-    '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10, '0': 11,
-    'f1': 59, 'f2': 60, 'f3': 61, 'f4': 62, 'f5': 63, 'f6': 64, 'f7': 65, 'f8': 66, 'f9': 67, 'f10': 68, 'f11': 87, 'f12': 88,
-    'tab': 15, 'enter': 28, 'space': 57, 'esc': 1, 'backspace': 14,
-    '²': 41, '&': 2, 'é': 3, '"': 4, "'": 5, '(': 6, '-': 7, 'è': 8, '_': 9, 'ç': 10, 'à': 11, ')': 12, '=': 13,
-    'num 1': 79, 'num 2': 80, 'num 3': 81, 'num 4': 75, 'num 5': 76, 'num 6': 77, 'num 7': 71, 'num 8': 72, 'num 9': 73, 'num 0': 82,
-}
+
+def try_load_windows_layout(layout_name):
+    layout_map = {
+        "azerty_fr": "0000040C",
+        "qwerty_us": "00000409",
+    }
+    layout_code = layout_map.get(layout_name)
+    if not layout_code:
+        return
+    try:
+        ctypes.windll.user32.LoadKeyboardLayoutW(layout_code, 1 | 0x00000100)
+    except Exception:
+        pass
+
 
 class OrganizerApp:
     def __init__(self):
         self.config = Config()
+        self.i18n = I18nManager(self.config.data.get("language", "fr"))
+        self.keymaps = KeyboardLayoutManager(self.config.data.get("keyboard_layout", "azerty_fr"))
+        try_load_windows_layout(self.config.data.get("keyboard_layout", "azerty_fr"))
         self.logic = DofusLogic(self.config)
         self.gui = OrganizerGUI(self)
         self.current_idx = 0
@@ -187,7 +190,7 @@ class OrganizerApp:
         }
         if key_str in mapping: return mapping[key_str]
         
-        scan_code = AZERTY_TO_SCAN.get(key_str)
+        scan_code = self.keymaps.key_to_scan(key_str)
         if scan_code is not None:
             vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1) 
             if vk: return vk
@@ -201,8 +204,24 @@ class OrganizerApp:
         if not hk_str: return False
         parts = hk_str.split('+')
         for p in parts:
-            vk = self.get_vk(p)
-            if vk is None or win32api.GetAsyncKeyState(vk) >= 0:
+            token = p.lower().strip()
+            if token in {"ctrl", "alt", "shift"}:
+                vk = self.get_vk(token)
+                if vk is None or win32api.GetAsyncKeyState(vk) >= 0:
+                    return False
+                continue
+
+            mouse_vk = self.get_vk(token) if "click" in token or "mouse" in token else None
+            if mouse_vk is not None:
+                if win32api.GetAsyncKeyState(mouse_vk) >= 0:
+                    return False
+                continue
+
+            scan_code = self.keymaps.resolve_scan_code(token)
+            if scan_code is not None:
+                if not keyboard.is_pressed(scan_code):
+                    return False
+            elif not keyboard.is_pressed(token):
                 return False
         return True
 
@@ -294,11 +313,10 @@ class OrganizerApp:
         mods = set()
         main_scan = None
         for p in parts:
-            if p in ['ctrl', 'alt', 'shift']: mods.add(p)
-            elif p in AZERTY_TO_SCAN: main_scan = AZERTY_TO_SCAN[p]
-            else: 
-                try: main_scan = keyboard.key_to_scan_codes(p)[0]
-                except: pass
+            if p in ['ctrl', 'alt', 'shift']:
+                mods.add(p)
+                continue
+            main_scan = self.keymaps.resolve_scan_code(p)
         if main_scan is not None:
             self.hotkey_actions[(frozenset(mods), main_scan)] = func
 

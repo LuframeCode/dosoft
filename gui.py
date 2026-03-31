@@ -116,7 +116,9 @@ class OrganizerGUI:
         self.tooltip_lbl.pack()
         self.tooltip.withdraw() 
         
-        self.hotkey_btns = {} 
+        self.hotkey_btns = {}
+        self.hotkey_labels = {}
+        self.tooltip_i18n_map = {}
 
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
@@ -126,7 +128,7 @@ class OrganizerGUI:
         
         self.btn_settings = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_settings", "⚙️ Paramètres"), fg_color="#34495e", hover_color="#2c3e50", width=120, command=self.open_settings)
         self.btn_settings.pack(side="right")
-        self.bind_tooltip(self.btn_settings, self.app.i18n.t("tooltip_settings", "Paramétrer la roue radiale"))
+        self.bind_i18n_tooltip(self.btn_settings, "tooltip_settings", "Paramétrer la roue radiale")
 
         self.btn_tuto = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_tutorial", "🎓 Tuto"), fg_color="#8e44ad", hover_color="#9b59b6", width=80, command=self.launch_tutorial)
         self.btn_tuto.pack(side="right", padx=(0, 10))
@@ -134,7 +136,7 @@ class OrganizerGUI:
         # --- NOUVEAU BOUTON OFF ---
         self.btn_off = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_off", "🔴 OFF"), fg_color="#c0392b", hover_color="#e74c3c", width=60, command=self.app.quit_app)
         self.btn_off.pack(side="right", padx=(0, 10))
-        self.bind_tooltip(self.btn_off, self.app.i18n.t("tooltip_off", "Fermer complètement DOSOFT"))
+        self.bind_i18n_tooltip(self.btn_off, "tooltip_off", "Fermer complètement DOSOFT")
         # --------------------------
 
         self.frame_mode = ctk.CTkFrame(self.root)
@@ -160,17 +162,17 @@ class OrganizerGUI:
         if cfg.get("game_version", "Unity") == "Rétro":
             self.chk_autofocus.pack(side="left", padx=(15, 5))
             
-        self.bind_tooltip(self.chk_autofocus, self.app.i18n.t("tooltip_auto_focus", "Focus automatiquement la page Rétro lors d'une notification"))
+        self.bind_i18n_tooltip(self.chk_autofocus, "tooltip_auto_focus", "Focus automatiquement la page Rétro lors d'une notification")
 
         self.frame_keys = ctk.CTkFrame(self.root)
         self.frame_keys.pack(fill="x", padx=15, pady=10)
         self.lbl_keyboard_shortcuts = ctk.CTkLabel(self.frame_keys, text=self.app.i18n.t("label_keyboard_shortcuts", "Raccourcis Clavier"), font=ctk.CTkFont(weight="bold"))
         self.lbl_keyboard_shortcuts.grid(row=0, column=0, columnspan=6, pady=5)
 
-        self.create_hotkey_row(self.frame_keys, self.app.i18n.t("hotkey_prev", "Précédent"), "prev_key", 1, 0, self.app.i18n.t("tooltip_prev", "Focus perso précédent"))
-        self.create_hotkey_row(self.frame_keys, self.app.i18n.t("hotkey_next", "Suivant"), "next_key", 1, 3, self.app.i18n.t("tooltip_next", "Focus perso suivant"))
-        self.create_hotkey_row(self.frame_keys, self.app.i18n.t("hotkey_leader", "Chef"), "leader_key", 2, 0, self.app.i18n.t("tooltip_leader", "Reprendre focus sur le Chef"))
-        self.create_hotkey_row(self.frame_keys, self.app.i18n.t("hotkey_toggle_ui", "Afficher UI"), "toggle_app_key", 2, 3, self.app.i18n.t("tooltip_toggle_ui", "Masquer/Afficher l'app"))
+        self.create_hotkey_row(self.frame_keys, "hotkey_prev", "prev_key", 1, 0, "tooltip_prev")
+        self.create_hotkey_row(self.frame_keys, "hotkey_next", "next_key", 1, 3, "tooltip_next")
+        self.create_hotkey_row(self.frame_keys, "hotkey_leader", "leader_key", 2, 0, "tooltip_leader")
+        self.create_hotkey_row(self.frame_keys, "hotkey_toggle_ui", "toggle_app_key", 2, 3, "tooltip_toggle_ui")
 
         self.frame_actions = ctk.CTkFrame(self.root)
         self.frame_actions.pack(fill="x", padx=15, pady=5)
@@ -198,7 +200,7 @@ class OrganizerGUI:
                                         fg_color="#2c3e50", hover_color="#1a252f", corner_radius=6,
                                         command=self.open_bind_manager)
         btn_manage_binds.pack(side="right", padx=5, pady=4)
-        self.bind_tooltip(btn_manage_binds, self.app.i18n.t("tooltip_manage_binds", "Gérer les raccourcis avancés par personnage"))
+        self.bind_i18n_tooltip(btn_manage_binds, "tooltip_manage_binds", "Gérer les raccourcis avancés par personnage")
 
         self.scroll_frame = ctk.CTkScrollableFrame(self.root)
         self.scroll_frame.pack(fill="both", expand=True, padx=15, pady=(5, 10))
@@ -245,6 +247,10 @@ class OrganizerGUI:
         self.chk_tooltips.configure(text=self.app.i18n.t("label_tooltips", "Bulles"))
         self.btn_hide.configure(text=self.app.i18n.t("btn_hide_ui", "Cacher l'UI"))
         self.chk_autofocus.configure(text=self.app.i18n.t("label_auto_focus", "Auto-Focus 🔔"))
+        for config_key, (label_widget, label_key) in self.hotkey_labels.items():
+            label_widget.configure(text=f"{self.app.i18n.t(label_key, label_key)}:")
+        for widget, (tooltip_key, default_text) in self.tooltip_i18n_map.items():
+            self.bind_tooltip(widget, self.app.i18n.t(tooltip_key, default_text))
         for button in self.hotkey_btns.values():
             if button.cget("text") in {"Aucun", "None", "Nenhum"}:
                 button.configure(text=none_label)
@@ -310,6 +316,10 @@ class OrganizerGUI:
             self.tooltip.withdraw()
 
     def bind_tooltip(self, widget, text):
+        widget.unbind("<Enter>")
+        widget.unbind("<Leave>")
+        widget.unbind("<Motion>")
+
         def on_enter(event):
             if self.is_listening or not self.app.config.data.get("show_tooltips", True): return 
             self.tooltip_lbl.config(text=text)
@@ -326,6 +336,10 @@ class OrganizerGUI:
         widget.bind("<Enter>", on_enter)
         widget.bind("<Leave>", on_leave)
         widget.bind("<Motion>", on_motion)
+
+    def bind_i18n_tooltip(self, widget, key, default_text):
+        self.tooltip_i18n_map[widget] = (key, default_text)
+        self.bind_tooltip(widget, self.app.i18n.t(key, default_text))
 
     def toggle_team_ui(self, name, btn):
         current_team = self.app.config.data.get("accounts_team", {}).get(name, "Team 1")
@@ -369,31 +383,31 @@ class OrganizerGUI:
             btn_close = ctk.CTkButton(row_frame, text="✖", width=25, fg_color="#c0392b", hover_color="#e74c3c")
             btn_close.configure(command=lambda n=acc['name']: self.close_and_refresh(n))
             btn_close.pack(side="right", padx=(2, 5))
-            self.bind_tooltip(btn_close, self.app.i18n.t("tooltip_close_game", "Fermer instantanément le jeu"))
+            self.bind_i18n_tooltip(btn_close, "tooltip_close_game", "Fermer instantanément le jeu")
             
             is_leader = (acc['name'] == leader_name)
             leader_txt = "🌟" if is_leader else "☆"
             leader_color = "#f39c12" if is_leader else "transparent"
             btn_lead = ctk.CTkButton(row_frame, text=leader_txt, width=35, fg_color=leader_color, border_width=1, command=lambda n=acc['name']: self.set_leader(n))
             btn_lead.pack(side="right", padx=2)
-            self.bind_tooltip(btn_lead, self.app.i18n.t("tooltip_set_leader", "Définir comme Chef"))
+            self.bind_i18n_tooltip(btn_lead, "tooltip_set_leader", "Définir comme Chef")
 
             team_val = acc.get('team', "Team 1")
             team_color = "#2980b9" if team_val == "Team 1" else "#c0392b"
             btn_team = ctk.CTkButton(row_frame, text="T1" if team_val == "Team 1" else "T2", width=35, fg_color=team_color)
             btn_team.configure(command=lambda n=acc['name'], b=btn_team: self.toggle_team_ui(n, b))
             btn_team.pack(side="right", padx=5)
-            self.bind_tooltip(btn_team, self.app.i18n.t("tooltip_change_team", "Changer d'équipe (T1/T2)"))
+            self.bind_i18n_tooltip(btn_team, "tooltip_change_team", "Changer d'équipe (T1/T2)")
 
             btn_down = ctk.CTkButton(row_frame, text="▼", width=25, fg_color="#34495e", hover_color="#2c3e50")
             btn_down.configure(command=lambda n=acc['name']: self.move_row(n, 1))
             btn_down.pack(side="right", padx=(2, 10))
-            self.bind_tooltip(btn_down, self.app.i18n.t("tooltip_move_down", "Descendre dans l'initiative"))
+            self.bind_i18n_tooltip(btn_down, "tooltip_move_down", "Descendre dans l'initiative")
             
             btn_up = ctk.CTkButton(row_frame, text="▲", width=25, fg_color="#34495e", hover_color="#2c3e50")
             btn_up.configure(command=lambda n=acc['name']: self.move_row(n, -1))
             btn_up.pack(side="right", padx=2)
-            self.bind_tooltip(btn_up, self.app.i18n.t("tooltip_move_up", "Monter dans l'initiative"))
+            self.bind_i18n_tooltip(btn_up, "tooltip_move_up", "Monter dans l'initiative")
 
             pos_values = [str(i+1) for i in range(len(accounts))]
             current_pos = str(idx + 1)
@@ -401,7 +415,7 @@ class OrganizerGUI:
             combo_pos.set(current_pos)
             combo_pos.configure(command=lambda val, n=acc['name']: self.change_position(n, val))
             combo_pos.pack(side="right", padx=(2, 5))
-            self.bind_tooltip(combo_pos, self.app.i18n.t("tooltip_exact_position", "Choisir la position exacte"))
+            self.bind_i18n_tooltip(combo_pos, "tooltip_exact_position", "Choisir la position exacte")
 
     def toggle_autofocus(self):
         self.app.config.data["auto_focus_retro"] = self.var_autofocus.get()
@@ -409,10 +423,12 @@ class OrganizerGUI:
         
     def on_volume_change(self, value): self.app.update_volume(int(value))
     
-    def create_hotkey_row(self, parent, label_text, config_key, row, col_offset, tooltip_txt=""):
-        lbl = ctk.CTkLabel(parent, text=f"{label_text}:")
+    def create_hotkey_row(self, parent, label_key, config_key, row, col_offset, tooltip_key=""):
+        lbl = ctk.CTkLabel(parent, text=f"{self.app.i18n.t(label_key, label_key)}:")
         lbl.grid(row=row, column=col_offset, padx=5, sticky="w")
-        if tooltip_txt: self.bind_tooltip(lbl, tooltip_txt)
+        if tooltip_key:
+            self.bind_i18n_tooltip(lbl, tooltip_key, tooltip_key)
+        self.hotkey_labels[config_key] = (lbl, label_key)
         
         current_val = self.app.config.data.get(config_key, "")
         btn = ctk.CTkButton(parent, text=current_val if current_val else self.app.i18n.t("none", "Aucun"), width=80, command=lambda: self.catch_key(config_key, btn, allow_mouse=True))
@@ -422,7 +438,7 @@ class OrganizerGUI:
         
         btn_x = ctk.CTkButton(parent, text="✖", width=25, fg_color="#c0392b", hover_color="#e74c3c", command=lambda: self.clear_key(config_key, btn))
         btn_x.grid(row=row, column=col_offset+2, padx=(0, 10))
-        self.bind_tooltip(btn_x, self.app.i18n.t("tooltip_clear_shortcut", "Effacer le raccourci"))
+        self.bind_i18n_tooltip(btn_x, "tooltip_clear_shortcut", "Effacer le raccourci")
 
     def catch_key(self, config_key, btn, allow_mouse=False):
         if self.is_listening: return

@@ -15,9 +15,9 @@ Le code source présent ici permet de reconstruire l'application fournie sur le 
     ```
     git clone https://github.com/LuframeCode/dosoft
     ```
-2. Ouvrir le projet et lancer le build via pyinstaller:
+2. Ouvrir le projet et lancer le build via le script recommandé:
     ```
-    pyinstaller --onefile --windowed main.py
+    build.cmd
     ```
 3. Le binaire compilé (.exe) se trouvera typiquement dans `dist/main.exe` ou dans le dossier indiqué par le script de build.
 

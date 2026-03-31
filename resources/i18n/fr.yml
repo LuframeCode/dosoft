@@ -14,7 +14,7 @@
   "label_controls": "Contrôler :",
   "label_versions": "Versions :",
   "label_keyboard_shortcuts": "Raccourcis Clavier",
-  "label_volume": "🔊 Volume Roulette :",
+  "label_volume": "🔊 Volume :",
   "btn_close_team": "Fermer Team",
   "btn_reset_settings": "Reset Settings",
   "label_active_accounts": "Comptes actifs",
@@ -57,5 +57,15 @@
   "char_manager_no_character": "Aucun personnage connecté détecté.",
   "msg_binds_saved": "✅ Raccourcis enregistrés avec succès !",
   "char_manager_save": "💾 Enregistrer les raccourcis",
-  "char_manager_position": "Place n°{index}"
+  "char_manager_position": "Place n°{index}",
+  "tray_toggle": "Afficher/Cacher",
+  "tray_sort": "Trier Barre Windows",
+  "tray_refresh": "Rafraîchir",
+  "tray_quit": "Quitter",
+  "popup_conflict_title": "⚠️ Conflit de logiciels détecté",
+  "popup_conflict_text": "Le logiciel 'Organizer' est actuellement ouvert.\nL'utilisation de deux gestionnaires de pages simultanément\nva créer des bugs et des conflits de focus sur DOSOFT.\n\nNous vous recommandons fortement de le fermer.",
+  "popup_conflict_ignore": "Ne plus m'afficher cet avertissement",
+  "btn_close_organizer": "Fermer Organizer",
+  "btn_keep_running": "Conserver",
+  "msg_organizer_closed": "✅ Organizer fermé avec succès !"
 }

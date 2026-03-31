@@ -88,10 +88,10 @@ class OrganizerApp:
         except: image = Image.new('RGB', (64, 64), color=(44, 62, 80))
 
         menu = pystray.Menu(
-            item('Afficher/Cacher', self.toggle_from_tray, default=True),
-            item('Trier Barre Windows', self.sort_taskbar_from_tray),
-            item('Rafraîchir', self.refresh_from_tray),
-            item('Quitter', self.quit_from_tray)
+            item(self.i18n.t("tray_toggle", "Afficher/Cacher"), self.toggle_from_tray, default=True),
+            item(self.i18n.t("tray_sort", "Trier Barre Windows"), self.sort_taskbar_from_tray),
+            item(self.i18n.t("tray_refresh", "Rafraîchir"), self.refresh_from_tray),
+            item(self.i18n.t("tray_quit", "Quitter"), self.quit_from_tray)
         )
         self.tray_icon = pystray.Icon("dosoft_tray", image, "DOSOFT", menu)
         self.tray_icon.run_detached()
@@ -133,7 +133,7 @@ class OrganizerApp:
 
     def show_conflict_popup(self):
         popup = ctk.CTkToplevel(self.gui.root)
-        popup.title("⚠️ Conflit de logiciels détecté")
+        popup.title(self.i18n.t("popup_conflict_title", "⚠️ Conflit de logiciels détecté"))
         popup.geometry("480x250")
         popup.attributes("-topmost", True)
         popup.resizable(False, False)
@@ -144,16 +144,16 @@ class OrganizerApp:
         y = self.gui.root.winfo_y() + (self.gui.root.winfo_height() // 2) - (250 // 2)
         popup.geometry(f"+{x}+{y}")
 
-        msg = ("Le logiciel 'Organizer' est actuellement ouvert.\n"
-               "L'utilisation de deux gestionnaires de pages simultanément\n"
-               "va créer des bugs et des conflits de focus sur DOSOFT.\n\n"
-               "Nous vous recommandons fortement de le fermer.")
+        msg = self.i18n.t(
+            "popup_conflict_text",
+            "Le logiciel 'Organizer' est actuellement ouvert.\nL'utilisation de deux gestionnaires de pages simultanément\nva créer des bugs et des conflits de focus sur DOSOFT.\n\nNous vous recommandons fortement de le fermer."
+        )
         
         lbl = ctk.CTkLabel(popup, text=msg, justify="center", font=ctk.CTkFont(size=13))
         lbl.pack(pady=(20, 15))
 
         var_ignore = ctk.BooleanVar(value=False)
-        chk = ctk.CTkCheckBox(popup, text="Ne plus m'afficher cet avertissement", variable=var_ignore)
+        chk = ctk.CTkCheckBox(popup, text=self.i18n.t("popup_conflict_ignore", "Ne plus m'afficher cet avertissement"), variable=var_ignore)
         chk.pack(pady=(0, 20))
 
         frame_btn = ctk.CTkFrame(popup, fg_color="transparent")
@@ -165,7 +165,7 @@ class OrganizerApp:
                 self.config.save()
             os.system("taskkill /F /IM organizer.exe /T")
             popup.destroy()
-            self.gui.show_temporary_message("✅ Organizer fermé avec succès !", "#2ecc71")
+            self.gui.show_temporary_message(self.i18n.t("msg_organizer_closed", "✅ Organizer fermé avec succès !"), "#2ecc71")
 
         def on_keep_organizer():
             if var_ignore.get():
@@ -173,10 +173,10 @@ class OrganizerApp:
                 self.config.save()
             popup.destroy()
 
-        btn_close = ctk.CTkButton(frame_btn, text="Fermer Organizer", fg_color="#27ae60", hover_color="#2ecc71", command=on_close_organizer)
+        btn_close = ctk.CTkButton(frame_btn, text=self.i18n.t("btn_close_organizer", "Fermer Organizer"), fg_color="#27ae60", hover_color="#2ecc71", command=on_close_organizer)
         btn_close.pack(side="left", expand=True, padx=10)
 
-        btn_keep = ctk.CTkButton(frame_btn, text="Conserver", fg_color="#7f8c8d", hover_color="#95a5a6", command=on_keep_organizer)
+        btn_keep = ctk.CTkButton(frame_btn, text=self.i18n.t("btn_keep_running", "Conserver"), fg_color="#7f8c8d", hover_color="#95a5a6", command=on_keep_organizer)
         btn_keep.pack(side="right", expand=True, padx=10)
         
         popup.grab_set()

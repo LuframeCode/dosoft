@@ -29,19 +29,20 @@ class SettingsWindow(ctk.CTkToplevel):
 
         title_font = ctk.CTkFont(size=16, weight="bold")
 
-        ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_radial", "Roue de Focus (Radiale)"), font=title_font).pack(pady=(20, 5))
+        self.lbl_settings_radial = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_radial", "Roue de Focus (Radiale)"), font=title_font)
+        self.lbl_settings_radial.pack(pady=(20, 5))
         frame_radial = ctk.CTkFrame(self.scroll_container)
         frame_radial.pack(fill="x", padx=10, pady=5)
         
         self.var_radial = ctk.BooleanVar(value=self.app.config.data.get("radial_menu_active", True))
-        sw_radial = ctk.CTkSwitch(frame_radial, text=self.app.i18n.t("settings_radial_enable", "Activer la roue"), variable=self.var_radial, command=self.save_settings)
-        sw_radial.pack(pady=10)
+        self.sw_radial = ctk.CTkSwitch(frame_radial, text=self.app.i18n.t("settings_radial_enable", "Activer la roue"), variable=self.var_radial, command=self.save_settings)
+        self.sw_radial.pack(pady=10)
 
         frame_hk = ctk.CTkFrame(frame_radial, fg_color="transparent")
         frame_hk.pack(pady=(0, 10))
         
-        lbl_hk = ctk.CTkLabel(frame_hk, text=self.app.i18n.t("settings_hotkey", "Raccourci :"))
-        lbl_hk.pack(side="left", padx=5)
+        self.lbl_hk = ctk.CTkLabel(frame_hk, text=self.app.i18n.t("settings_hotkey", "Raccourci :"))
+        self.lbl_hk.pack(side="left", padx=5)
         
         current_val = self.app.config.data.get("radial_menu_hotkey", "alt+left_click")
         btn_hk = ctk.CTkButton(frame_hk, text=current_val if current_val else self.app.i18n.t("none", "Aucun"), width=120, command=lambda: self.parent.catch_key("radial_menu_hotkey", btn_hk, allow_mouse=True))
@@ -54,18 +55,20 @@ class SettingsWindow(ctk.CTkToplevel):
 
         frame_language = ctk.CTkFrame(self.scroll_container)
         frame_language.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(frame_language, text=self.app.i18n.t("settings_language", "Langue")).pack(side="left", padx=8, pady=8)
+        self.lbl_language = ctk.CTkLabel(frame_language, text=self.app.i18n.t("settings_language", "Langue"))
+        self.lbl_language.pack(side="left", padx=8, pady=8)
         self.var_language = ctk.StringVar(value=self.app.config.data.get("language", "fr"))
         ctk.CTkOptionMenu(frame_language, values=["fr", "en", "pt"], variable=self.var_language, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
 
         frame_keyboard = ctk.CTkFrame(self.scroll_container)
         frame_keyboard.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(frame_keyboard, text=self.app.i18n.t("settings_keyboard_layout", "Disposition clavier")).pack(side="left", padx=8, pady=8)
+        self.lbl_keyboard = ctk.CTkLabel(frame_keyboard, text=self.app.i18n.t("settings_keyboard_layout", "Disposition clavier"))
+        self.lbl_keyboard.pack(side="left", padx=8, pady=8)
         self.var_keyboard_layout = ctk.StringVar(value=self.app.config.data.get("keyboard_layout", "azerty_fr"))
         ctk.CTkOptionMenu(frame_keyboard, values=["azerty_fr", "qwerty_us"], variable=self.var_keyboard_layout, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
         
-        btn_close = ctk.CTkButton(self.scroll_container, text=self.app.i18n.t("settings_close", "Fermer"), fg_color="#7f8c8d", command=self.destroy)
-        btn_close.pack(pady=(20, 10))
+        self.btn_close = ctk.CTkButton(self.scroll_container, text=self.app.i18n.t("settings_close", "Fermer"), fg_color="#7f8c8d", command=self.destroy)
+        self.btn_close.pack(pady=(20, 10))
 
     def save_settings(self):
         previous_language = self.app.config.data.get("language", "fr")
@@ -77,9 +80,19 @@ class SettingsWindow(ctk.CTkToplevel):
         self.app.setup_hotkeys()
         self.app.config.save()
         self.parent.apply_translations()
+        self.apply_translations()
 
         if previous_language != self.var_language.get():
             self.title(self.app.i18n.t("settings_title", "⚙️ Paramètres"))
+
+    def apply_translations(self):
+        self.title(self.app.i18n.t("settings_title", "⚙️ Paramètres"))
+        self.lbl_settings_radial.configure(text=self.app.i18n.t("settings_radial", "Roue de Focus (Radiale)"))
+        self.sw_radial.configure(text=self.app.i18n.t("settings_radial_enable", "Activer la roue"))
+        self.lbl_hk.configure(text=self.app.i18n.t("settings_hotkey", "Raccourci :"))
+        self.lbl_language.configure(text=self.app.i18n.t("settings_language", "Langue"))
+        self.lbl_keyboard.configure(text=self.app.i18n.t("settings_keyboard_layout", "Disposition clavier"))
+        self.btn_close.configure(text=self.app.i18n.t("settings_close", "Fermer"))
 
 
 class OrganizerGUI:
@@ -177,7 +190,7 @@ class OrganizerGUI:
         self.frame_actions = ctk.CTkFrame(self.root)
         self.frame_actions.pack(fill="x", padx=15, pady=5)
 
-        self.lbl_volume = ctk.CTkLabel(self.frame_actions, text=self.app.i18n.t("label_volume", "🔊 Volume Roulette :"))
+        self.lbl_volume = ctk.CTkLabel(self.frame_actions, text=self.app.i18n.t("label_volume", "🔊 Volume :"))
         self.lbl_volume.pack(side="left", padx=10)
         self.slider_volume = ctk.CTkSlider(self.frame_actions, from_=0, to=100, command=self.on_volume_change, width=150)
         self.slider_volume.set(cfg.get("volume_level", 50))
@@ -238,7 +251,7 @@ class OrganizerGUI:
         self.lbl_controls.configure(text=self.app.i18n.t("label_controls", "Contrôler :"))
         self.lbl_versions.configure(text=self.app.i18n.t("label_versions", "Versions :"))
         self.lbl_keyboard_shortcuts.configure(text=self.app.i18n.t("label_keyboard_shortcuts", "Raccourcis Clavier"))
-        self.lbl_volume.configure(text=self.app.i18n.t("label_volume", "🔊 Volume Roulette :"))
+        self.lbl_volume.configure(text=self.app.i18n.t("label_volume", "🔊 Volume :"))
         self.btn_close_all.configure(text=self.app.i18n.t("btn_close_team", "Fermer Team"))
         self.btn_reset.configure(text=self.app.i18n.t("btn_reset_settings", "Reset Settings"))
         self.lbl_accounts.configure(text=self.app.i18n.t("label_active_accounts", "Comptes actifs"))
@@ -247,6 +260,8 @@ class OrganizerGUI:
         self.chk_tooltips.configure(text=self.app.i18n.t("label_tooltips", "Bulles"))
         self.btn_hide.configure(text=self.app.i18n.t("btn_hide_ui", "Cacher l'UI"))
         self.chk_autofocus.configure(text=self.app.i18n.t("label_auto_focus", "Auto-Focus 🔔"))
+        if hasattr(self, 'settings_window') and self.settings_window.winfo_exists():
+            self.settings_window.apply_translations()
         for config_key, (label_widget, label_key) in self.hotkey_labels.items():
             label_widget.configure(text=f"{self.app.i18n.t(label_key, label_key)}:")
         for widget, (tooltip_key, default_text) in self.tooltip_i18n_map.items():

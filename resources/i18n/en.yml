@@ -14,7 +14,7 @@
   "label_controls": "Control:",
   "label_versions": "Versions:",
   "label_keyboard_shortcuts": "Keyboard Shortcuts",
-  "label_volume": "🔊 Wheel Volume:",
+  "label_volume": "🔊 Volume:",
   "btn_close_team": "Close Team",
   "btn_reset_settings": "Reset Settings",
   "label_active_accounts": "Active accounts",
@@ -57,5 +57,15 @@
   "char_manager_no_character": "No connected character detected.",
   "msg_binds_saved": "✅ Shortcuts saved successfully!",
   "char_manager_save": "💾 Save shortcuts",
-  "char_manager_position": "Slot #{index}"
+  "char_manager_position": "Slot #{index}",
+  "tray_toggle": "Show/Hide",
+  "tray_sort": "Sort Taskbar",
+  "tray_refresh": "Refresh",
+  "tray_quit": "Quit",
+  "popup_conflict_title": "⚠️ Software conflict detected",
+  "popup_conflict_text": "The software 'Organizer' is currently open.\nUsing two page managers at the same time\nwill create bugs and focus conflicts in DOSOFT.\n\nWe strongly recommend closing it.",
+  "popup_conflict_ignore": "Do not show this warning again",
+  "btn_close_organizer": "Close Organizer",
+  "btn_keep_running": "Keep Open",
+  "msg_organizer_closed": "✅ Organizer closed successfully!"
 }

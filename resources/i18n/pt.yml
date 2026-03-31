@@ -14,7 +14,7 @@
   "label_controls": "Controlar:",
   "label_versions": "Versões:",
   "label_keyboard_shortcuts": "Atalhos de Teclado",
-  "label_volume": "🔊 Volume da Roda:",
+  "label_volume": "🔊 Volume:",
   "btn_close_team": "Fechar Time",
   "btn_reset_settings": "Resetar Configs",
   "label_active_accounts": "Contas ativas",
@@ -57,5 +57,15 @@
   "char_manager_no_character": "Nenhum personagem conectado detectado.",
   "msg_binds_saved": "✅ Atalhos salvos com sucesso!",
   "char_manager_save": "💾 Salvar atalhos",
-  "char_manager_position": "Posição nº{index}"
+  "char_manager_position": "Posição nº{index}",
+  "tray_toggle": "Mostrar/Ocultar",
+  "tray_sort": "Ordenar Barra do Windows",
+  "tray_refresh": "Atualizar",
+  "tray_quit": "Sair",
+  "popup_conflict_title": "⚠️ Conflito de software detectado",
+  "popup_conflict_text": "O software 'Organizer' está aberto no momento.\nUsar dois gerenciadores de janelas ao mesmo tempo\nvai criar bugs e conflitos de foco no DOSOFT.\n\nRecomendamos fortemente fechá-lo.",
+  "popup_conflict_ignore": "Não mostrar este aviso novamente",
+  "btn_close_organizer": "Fechar Organizer",
+  "btn_keep_running": "Manter aberto",
+  "msg_organizer_closed": "✅ Organizer fechado com sucesso!"
 }

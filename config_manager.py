@@ -28,7 +28,8 @@ class Config:
             "advanced_bind_modifier": "ctrl",
             "persistent_character_binds": {}, 
             "cycle_row_binds": ["ctrl+F1", "ctrl+F2", "ctrl+F3", "ctrl+F4", "ctrl+F5", "ctrl+F6", "ctrl+F7", "ctrl+F8"],
-            "click_speed": "Lent"
+            "keyboard_layout": "azerty_fr",
+            "language": "fr"
         }
         self.load()
 

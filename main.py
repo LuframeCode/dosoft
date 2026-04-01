@@ -23,11 +23,6 @@ except:
     try: ctypes.windll.user32.SetProcessDPIAware()
     except: pass
 
-# --- FORCAGE DU CLAVIER EN AZERTY FRANCAIS (0x040C) ---
-try:
-    ctypes.windll.user32.LoadKeyboardLayoutW("0000040C", 1 | 0x00000100)
-except: pass
-
 try:
     from winrt.windows.ui.notifications.management import UserNotificationListener
     from winrt.windows.ui.notifications import NotificationKinds
@@ -39,22 +34,30 @@ from config_manager import Config
 from logic import DofusLogic
 from gui import OrganizerGUI
 from radial_menu import RadialMenu
+from i18n_manager import I18nManager
+from keyboard_layout_manager import KeyboardLayoutManager
 
-# --- LE DICTIONNAIRE MAGIQUE DES SIGNAUX ÉLECTRIQUES (AZERTY) ---
-AZERTY_TO_SCAN = {
-    'a': 16, 'z': 17, 'e': 18, 'r': 19, 't': 20, 'y': 21, 'u': 22, 'i': 23, 'o': 24, 'p': 25,
-    'q': 30, 's': 31, 'd': 32, 'f': 33, 'g': 34, 'h': 35, 'j': 36, 'k': 37, 'l': 38, 'm': 39,
-    'w': 44, 'x': 45, 'c': 46, 'v': 47, 'b': 48, 'n': 49,
-    '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10, '0': 11,
-    'f1': 59, 'f2': 60, 'f3': 61, 'f4': 62, 'f5': 63, 'f6': 64, 'f7': 65, 'f8': 66, 'f9': 67, 'f10': 68, 'f11': 87, 'f12': 88,
-    'tab': 15, 'enter': 28, 'space': 57, 'esc': 1, 'backspace': 14,
-    '²': 41, '&': 2, 'é': 3, '"': 4, "'": 5, '(': 6, '-': 7, 'è': 8, '_': 9, 'ç': 10, 'à': 11, ')': 12, '=': 13,
-    'num 1': 79, 'num 2': 80, 'num 3': 81, 'num 4': 75, 'num 5': 76, 'num 6': 77, 'num 7': 71, 'num 8': 72, 'num 9': 73, 'num 0': 82,
-}
+
+def try_load_windows_layout(layout_name):
+    layout_map = {
+        "azerty_fr": "0000040C",
+        "qwerty_us": "00000409",
+    }
+    layout_code = layout_map.get(layout_name)
+    if not layout_code:
+        return
+    try:
+        ctypes.windll.user32.LoadKeyboardLayoutW(layout_code, 1 | 0x00000100)
+    except Exception:
+        pass
+
 
 class OrganizerApp:
     def __init__(self):
         self.config = Config()
+        self.i18n = I18nManager(self.config.data.get("language", "fr"))
+        self.keymaps = KeyboardLayoutManager(self.config.data.get("keyboard_layout", "azerty_fr"))
+        try_load_windows_layout(self.config.data.get("keyboard_layout", "azerty_fr"))
         self.logic = DofusLogic(self.config)
         self.gui = OrganizerGUI(self)
         self.current_idx = 0
@@ -85,10 +88,10 @@ class OrganizerApp:
         except: image = Image.new('RGB', (64, 64), color=(44, 62, 80))
 
         menu = pystray.Menu(
-            item('Afficher/Cacher', self.toggle_from_tray, default=True),
-            item('Trier Barre Windows', self.sort_taskbar_from_tray),
-            item('Rafraîchir', self.refresh_from_tray),
-            item('Quitter', self.quit_from_tray)
+            item(self.i18n.t("tray_toggle", "Afficher/Cacher"), self.toggle_from_tray, default=True),
+            item(self.i18n.t("tray_sort", "Trier Barre Windows"), self.sort_taskbar_from_tray),
+            item(self.i18n.t("tray_refresh", "Rafraîchir"), self.refresh_from_tray),
+            item(self.i18n.t("tray_quit", "Quitter"), self.quit_from_tray)
         )
         self.tray_icon = pystray.Icon("dosoft_tray", image, "DOSOFT", menu)
         self.tray_icon.run_detached()
@@ -130,7 +133,7 @@ class OrganizerApp:
 
     def show_conflict_popup(self):
         popup = ctk.CTkToplevel(self.gui.root)
-        popup.title("⚠️ Conflit de logiciels détecté")
+        popup.title(self.i18n.t("popup_conflict_title", "⚠️ Conflit de logiciels détecté"))
         popup.geometry("480x250")
         popup.attributes("-topmost", True)
         popup.resizable(False, False)
@@ -141,16 +144,16 @@ class OrganizerApp:
         y = self.gui.root.winfo_y() + (self.gui.root.winfo_height() // 2) - (250 // 2)
         popup.geometry(f"+{x}+{y}")
 
-        msg = ("Le logiciel 'Organizer' est actuellement ouvert.\n"
-               "L'utilisation de deux gestionnaires de pages simultanément\n"
-               "va créer des bugs et des conflits de focus sur DOSOFT.\n\n"
-               "Nous vous recommandons fortement de le fermer.")
+        msg = self.i18n.t(
+            "popup_conflict_text",
+            "Le logiciel 'Organizer' est actuellement ouvert.\nL'utilisation de deux gestionnaires de pages simultanément\nva créer des bugs et des conflits de focus sur DOSOFT.\n\nNous vous recommandons fortement de le fermer."
+        )
         
         lbl = ctk.CTkLabel(popup, text=msg, justify="center", font=ctk.CTkFont(size=13))
         lbl.pack(pady=(20, 15))
 
         var_ignore = ctk.BooleanVar(value=False)
-        chk = ctk.CTkCheckBox(popup, text="Ne plus m'afficher cet avertissement", variable=var_ignore)
+        chk = ctk.CTkCheckBox(popup, text=self.i18n.t("popup_conflict_ignore", "Ne plus m'afficher cet avertissement"), variable=var_ignore)
         chk.pack(pady=(0, 20))
 
         frame_btn = ctk.CTkFrame(popup, fg_color="transparent")
@@ -162,7 +165,7 @@ class OrganizerApp:
                 self.config.save()
             os.system("taskkill /F /IM organizer.exe /T")
             popup.destroy()
-            self.gui.show_temporary_message("✅ Organizer fermé avec succès !", "#2ecc71")
+            self.gui.show_temporary_message(self.i18n.t("msg_organizer_closed", "✅ Organizer fermé avec succès !"), "#2ecc71")
 
         def on_keep_organizer():
             if var_ignore.get():
@@ -170,10 +173,10 @@ class OrganizerApp:
                 self.config.save()
             popup.destroy()
 
-        btn_close = ctk.CTkButton(frame_btn, text="Fermer Organizer", fg_color="#27ae60", hover_color="#2ecc71", command=on_close_organizer)
+        btn_close = ctk.CTkButton(frame_btn, text=self.i18n.t("btn_close_organizer", "Fermer Organizer"), fg_color="#27ae60", hover_color="#2ecc71", command=on_close_organizer)
         btn_close.pack(side="left", expand=True, padx=10)
 
-        btn_keep = ctk.CTkButton(frame_btn, text="Conserver", fg_color="#7f8c8d", hover_color="#95a5a6", command=on_keep_organizer)
+        btn_keep = ctk.CTkButton(frame_btn, text=self.i18n.t("btn_keep_running", "Conserver"), fg_color="#7f8c8d", hover_color="#95a5a6", command=on_keep_organizer)
         btn_keep.pack(side="right", expand=True, padx=10)
         
         popup.grab_set()
@@ -187,12 +190,17 @@ class OrganizerApp:
         }
         if key_str in mapping: return mapping[key_str]
         
-        scan_code = AZERTY_TO_SCAN.get(key_str)
+        scan_code = self.keymaps.key_to_scan(key_str)
         if scan_code is not None:
             vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1) 
             if vk: return vk
             
-        if len(key_str) == 1: return ord(key_str.upper())
+        if len(key_str) == 1:
+            vk_scan = ctypes.windll.user32.VkKeyScanW(ord(key_str))
+            vk = vk_scan & 0xFF
+            if vk != 0xFF:
+                return vk
+            return ord(key_str.upper())
         if key_str.startswith('f') and key_str[1:].isdigit():
             return 0x6F + int(key_str[1:])
         return None
@@ -201,8 +209,24 @@ class OrganizerApp:
         if not hk_str: return False
         parts = hk_str.split('+')
         for p in parts:
-            vk = self.get_vk(p)
-            if vk is None or win32api.GetAsyncKeyState(vk) >= 0:
+            token = p.lower().strip()
+            if token in {"ctrl", "alt", "shift"}:
+                vk = self.get_vk(token)
+                if vk is None or win32api.GetAsyncKeyState(vk) >= 0:
+                    return False
+                continue
+
+            mouse_vk = self.get_vk(token) if "click" in token or "mouse" in token else None
+            if mouse_vk is not None:
+                if win32api.GetAsyncKeyState(mouse_vk) >= 0:
+                    return False
+                continue
+
+            scan_code = self.keymaps.resolve_scan_code(token)
+            if scan_code is not None:
+                if not keyboard.is_pressed(scan_code):
+                    return False
+            elif not keyboard.is_pressed(token):
                 return False
         return True
 
@@ -294,11 +318,10 @@ class OrganizerApp:
         mods = set()
         main_scan = None
         for p in parts:
-            if p in ['ctrl', 'alt', 'shift']: mods.add(p)
-            elif p in AZERTY_TO_SCAN: main_scan = AZERTY_TO_SCAN[p]
-            else: 
-                try: main_scan = keyboard.key_to_scan_codes(p)[0]
-                except: pass
+            if p in ['ctrl', 'alt', 'shift']:
+                mods.add(p)
+                continue
+            main_scan = self.keymaps.resolve_scan_code(p)
         if main_scan is not None:
             self.hotkey_actions[(frozenset(mods), main_scan)] = func
 
@@ -457,10 +480,11 @@ class OrganizerApp:
             await asyncio.sleep(0.5) 
                 
 # --- SYSTÈME DE VÉRIFICATION DE VERSION ---
-CURRENT_VERSION = "1.1.1" 
+CURRENT_VERSION = "1.2.0" 
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
-def check_version():
+def check_version(i18n=None):
+    i18n = i18n or I18nManager("fr")
     try:
         response = requests.get(VERSION_URL, timeout=5)
         response.raise_for_status() 
@@ -468,15 +492,23 @@ def check_version():
         latest_version = data.get("version")
 
         if latest_version and latest_version != CURRENT_VERSION:
-            message = (
-                f"Une mise à jour est requise pour utiliser le logiciel.\n\n"
-                f"Votre version : {CURRENT_VERSION}\n"
-                f"Version disponible : {latest_version}\n\n"
-                f"Mise à jour dispo sur Dosoft.fr"
+            message = i18n.t(
+                "version_update_required_text",
+                "Une mise à jour est requise pour utiliser le logiciel.\n\nVotre version : {current_version}\nVersion disponible : {latest_version}\n\nMise à jour dispo sur Dosoft.fr"
+            ).format(current_version=CURRENT_VERSION, latest_version=latest_version)
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                message,
+                i18n.t("version_update_required_title", "Mise à jour requise"),
+                0x10
             )
-            ctypes.windll.user32.MessageBoxW(0, message, "Mise à jour requise", 0x10)
     except requests.RequestException:
-        ctypes.windll.user32.MessageBoxW(0, "Impossible de vérifier la version.", "Erreur réseau", 0x10)
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            i18n.t("version_network_error_text", "Impossible de vérifier la version."),
+            i18n.t("version_network_error_title", "Erreur réseau"),
+            0x10
+        )
         
 
 def is_admin():
@@ -492,15 +524,16 @@ def run_as_admin():
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, f'"{script}" {params}', None, 1)
 
 def handle_multiple_instances():
+    i18n = I18nManager(Config().data.get("language", "fr"))
     mutex_name = "DOSOFT_SINGLE_INSTANCE_MUTEX"
     mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
     if ctypes.windll.kernel32.GetLastError() == 183:
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
-        rep = messagebox.askyesno("Instance détectée", "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?", parent=root)
+        rep = messagebox.askyesno(i18n.t("header_instace_off", "Instance détectée"),i18n.t("popup_conflict_instance_text","Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"))
         if rep:
-            hwnd = win32gui.FindWindow(None, "DOSOFT v1.1.1")
+            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.0")
             if hwnd:
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 try:
@@ -519,9 +552,9 @@ def start_application():
     if not is_admin():
         run_as_admin()
         sys.exit() 
-           
+    cfg = Config()       
     _app_mutex = handle_multiple_instances()
-    check_version()
+    check_version(I18nManager(cfg.data.get("language", "fr")))
 
     app = OrganizerApp()
     app.gui.run()

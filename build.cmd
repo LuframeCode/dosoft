@@ -16,7 +16,6 @@ echo   Compilation PyInstaller - DOSOFT
 echo  ============================
 echo.
 
-:: --- Nettoyage ---
 if exist "%OUT_DIR%" (
     echo [*] Nettoyage du dossier dist...
     rmdir /s /q "%OUT_DIR%"
@@ -39,6 +38,8 @@ python -m PyInstaller ^
     --distpath="%OUT_DIR%" ^
     --add-data="skin;skin" ^
     --add-data="sounds;sounds" ^
+    --add-data="resources\\i18n;resources\\i18n" ^
+    --add-data="resources\\keyboards;resources\\keyboards" ^
     --add-data="logo.ico;." ^
     --hidden-import=customtkinter ^
     --hidden-import=PIL ^
@@ -49,7 +50,6 @@ python -m PyInstaller ^
     --hidden-import=win32process ^
     --hidden-import=keyboard ^
     --collect-all=customtkinter ^
-    --hidden-import=tutorial ^
     "%MAIN_FILE%"
 
 if %ERRORLEVEL% NEQ 0 (

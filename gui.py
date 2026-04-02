@@ -14,7 +14,111 @@ from config_manager import Config
 
 
 ctk.set_appearance_mode("Dark")  
-ctk.set_default_color_theme("blue")  
+ctk.set_default_color_theme("blue")
+
+
+class FloatingToolbar:
+    def __init__(self, app_controller, parent_gui):
+        self.app = app_controller
+        self.parent_gui = parent_gui
+        self.window = tk.Toplevel(parent_gui.root)
+        self.window.overrideredirect(True)
+        self.window.attributes("-topmost", True)
+        self.window.attributes("-alpha", 0.90)
+        self.window.configure(bg="#1e1e1e")
+
+        self.x = 0
+        self.y = 0
+        saved_x = self.app.config.data.get("toolbar_x", 100)
+        saved_y = self.app.config.data.get("toolbar_y", 100)
+        self.window.geometry(f"+{saved_x}+{saved_y}")
+
+        title_frame = tk.Frame(self.window, bg="#c0392b", cursor="fleur")
+        title_frame.pack(fill="x")
+
+        tk_lbl = tk.Label(title_frame, text="≡ Doframe ≡", bg="#c0392b", fg="white", font=("Arial", 8, "bold"))
+        tk_lbl.pack(pady=2)
+        self.lbl_title = tk_lbl
+
+        content = tk.Frame(self.window, bg="#1e1e1e")
+        content.pack(padx=5, pady=5)
+
+        top_row = tk.Frame(content, bg="#1e1e1e")
+        top_row.pack(fill="x", pady=(0, 5))
+
+        self.btn_show_gui = ctk.CTkButton(top_row, text="⬅", width=25, height=25, fg_color="#34495e", hover_color="#2c3e50", command=self.parent_gui.show_gui)
+        self.btn_show_gui.pack(side="left", padx=2)
+
+        self.combo_mode = ctk.CTkOptionMenu(top_row, values=["ALL", "Team 1", "Team 2"], width=80, height=25, command=self.on_mode_change)
+        self.combo_mode.set(self.app.config.data.get("current_mode", "ALL"))
+        self.combo_mode.pack(side="left", padx=2)
+
+        self.btn_refresh_overlay = ctk.CTkButton(top_row, text="F5", font=ctk.CTkFont(size=11, weight="bold"), width=25, height=25, fg_color="#27ae60", hover_color="#2ecc71", command=self.parent_gui.original_app_refresh)
+        self.btn_refresh_overlay.pack(side="right", padx=2)
+
+        self.bot_row = tk.Frame(content, bg="#1e1e1e")
+        self.bot_row.pack(fill="x")
+
+        self.combo_leader = ctk.CTkOptionMenu(self.bot_row, values=["---"], width=145, height=25, command=self.on_leader_change)
+        self.combo_leader.set("---")
+        self.combo_leader.pack(side="left", padx=2, pady=(2, 0))
+
+        title_frame.bind("<ButtonPress-1>", self.start_move)
+        title_frame.bind("<B1-Motion>", self.on_move)
+        title_frame.bind("<ButtonRelease-1>", self.stop_move)
+        tk_lbl.bind("<ButtonPress-1>", self.start_move)
+        tk_lbl.bind("<B1-Motion>", self.on_move)
+        tk_lbl.bind("<ButtonRelease-1>", self.stop_move)
+        self.apply_translations()
+
+    def start_move(self, event):
+        self.x = event.x
+        self.y = event.y
+
+    def on_move(self, event):
+        new_x = self.window.winfo_x() + event.x - self.x
+        new_y = self.window.winfo_y() + event.y - self.y
+        self.window.geometry(f"+{new_x}+{new_y}")
+
+    def stop_move(self, _event):
+        self.app.config.data["toolbar_x"] = self.window.winfo_x()
+        self.app.config.data["toolbar_y"] = self.window.winfo_y()
+        self.app.config.save()
+
+    def on_mode_change(self, choice):
+        self.parent_gui.set_mode(choice)
+
+    def on_leader_change(self, choice):
+        if choice and choice != "---":
+            self.parent_gui.set_leader(choice)
+
+    def update_accounts(self, accounts):
+        mode = self.app.config.data.get("current_mode", "ALL")
+        self.combo_mode.set(mode)
+        leader_name = self.app.config.data.get("leader_name", "")
+        available = [acc["name"] for acc in accounts if mode == "ALL" or acc.get("team", "Team 1") == mode]
+        if not available:
+            available = ["---"]
+        self.combo_leader.configure(values=available)
+        if leader_name in available:
+            self.combo_leader.set(leader_name)
+        else:
+            self.combo_leader.set(available[0])
+
+    def apply_translations(self):
+        self.lbl_title.configure(text=self.app.i18n.t("floating_toolbar_title", "≡ Doframe ≡"))
+        self.parent_gui.bind_i18n_tooltip(self.btn_show_gui, "tooltip_open_main_ui", "Open main interface")
+        self.parent_gui.bind_i18n_tooltip(self.btn_refresh_overlay, "tooltip_refresh_pages", "Refresh Dofus pages")
+
+    def show(self):
+        self.window.deiconify()
+        self.app.config.data["floating_toolbar_visible"] = True
+        self.app.config.save()
+
+    def hide(self):
+        self.window.withdraw()
+        self.app.config.data["floating_toolbar_visible"] = False
+        self.app.config.save()
 
 class SettingsWindow(ctk.CTkToplevel):
     def __init__(self, parent_gui):
@@ -56,6 +160,23 @@ class SettingsWindow(ctk.CTkToplevel):
         btn_x = ctk.CTkButton(frame_hk, text="✖", width=25, fg_color="#c0392b", hover_color="#e74c3c", command=lambda: self.parent.clear_key("radial_menu_hotkey", btn_hk))
         btn_x.pack(side="left", padx=5)
 
+        self.lbl_settings_toolbar = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_floating_toolbar", "Floating Toolbar"), font=title_font)
+        self.lbl_settings_toolbar.pack(pady=(20, 5))
+        self.frame_toolbar_hotkeys = ctk.CTkFrame(self.scroll_container)
+        self.frame_toolbar_hotkeys.pack(fill="x", padx=10, pady=5)
+
+        self.parent.create_hotkey_row(self.frame_toolbar_hotkeys, "hotkey_toggle_toolbar", "toggle_toolbar_key", 0, 0)
+
+        self.lbl_settings_team = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_team", "Équipe"), font=title_font)
+        self.lbl_settings_team.pack(pady=(20, 5))
+        self.frame_team_hotkeys = ctk.CTkFrame(self.scroll_container)
+        self.frame_team_hotkeys.pack(fill="x", padx=10, pady=5)
+
+        self.parent.create_hotkey_row(self.frame_team_hotkeys, "hotkey_mode_all", "mode_all_key", 1, 0)
+        self.parent.create_hotkey_row(self.frame_team_hotkeys, "hotkey_mode_team1", "mode_team1_key", 2, 0)
+        self.parent.create_hotkey_row(self.frame_team_hotkeys, "hotkey_mode_team2", "mode_team2_key", 3, 0)
+        
+        
         frame_language = ctk.CTkFrame(self.scroll_container)
         frame_language.pack(fill="x", padx=10, pady=5)
         self.lbl_language = ctk.CTkLabel(frame_language, text=self.app.i18n.t("settings_language", "Langue"))
@@ -96,6 +217,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self.lbl_language.configure(text=self.app.i18n.t("settings_language", "Langue"))
         self.lbl_keyboard.configure(text=self.app.i18n.t("settings_keyboard_layout", "Disposition clavier"))
         self.btn_close.configure(text=self.app.i18n.t("settings_close", "Fermer"))
+        self.lbl_settings_toolbar.configure(text=self.app.i18n.t("settings_floating_toolbar", "Barre Flottante"))
+        self.lbl_settings_team.configure(text=self.app.i18n.t("settings_team", "Équipe"))
 
 
 class OrganizerGUI:
@@ -245,7 +368,11 @@ class OrganizerGUI:
         self.lbl_feedback = ctk.CTkLabel(frame_msg, text="", font=ctk.CTkFont(size=13, weight="bold"))
         self.lbl_feedback.pack(expand=True)
         
-        self.skin_cache = {} 
+        self.skin_cache = {}
+        
+        self.floating_toolbar = FloatingToolbar(app_controller, self)
+        if not cfg.get("floating_toolbar_visible", False):
+            self.floating_toolbar.hide() 
 
     def apply_translations(self):
         none_label = self.app.i18n.t("none", "Aucun")
@@ -266,6 +393,7 @@ class OrganizerGUI:
         self.chk_tooltips.configure(text=self.app.i18n.t("label_tooltips", "Bulles"))
         self.btn_hide.configure(text=self.app.i18n.t("btn_hide_ui", "Cacher l'UI"))
         self.chk_autofocus.configure(text=self.app.i18n.t("label_auto_focus", "Auto-Focus 🔔"))
+        self.floating_toolbar.apply_translations()
         if hasattr(self, 'settings_window') and self.settings_window.winfo_exists():
             self.settings_window.apply_translations()
         for config_key, (label_widget, label_key) in self.hotkey_labels.items():
@@ -368,6 +496,7 @@ class OrganizerGUI:
         btn.configure(text="T1" if new_team == "Team 1" else "T2", fg_color=team_color)
 
     def refresh_list(self, accounts):
+        self.floating_toolbar.update_accounts(accounts)
         for widget in self.scroll_frame.winfo_children(): widget.destroy()
         leader_name = self.app.config.data.get("leader_name", "")
         
@@ -590,8 +719,7 @@ class OrganizerGUI:
         self.show_temporary_message(self.app.i18n.t("msg_mode_enabled", "🔄 Mode {choice} activé !").format(choice=choice), "#3498db")
 
     def on_mode_change(self, choice):
-        self.app.logic.set_mode(choice)
-        self.app.current_idx = 0
+        self.set_mode(choice)
 
     def get_class_image(self, class_name, is_retro=False):
         filename = f"{class_name}_retro" if is_retro and class_name != "Inconnu" else class_name
@@ -610,6 +738,25 @@ class OrganizerGUI:
     def set_leader(self, name):
         self.app.logic.set_leader(name)
         self.original_app_refresh()
+        
+    def set_mode(self, choice):
+        self.app.logic.set_mode(choice)
+        self.app.current_idx = 0
+        self.combo_mode.set(choice)
+        self.floating_toolbar.combo_mode.set(choice)
+        self.floating_toolbar.update_accounts(self.app.logic.all_accounts)
+
+    def show_gui(self):
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+        self.is_visible = True
+
+    def toggle_floating_toolbar(self):
+        if self.floating_toolbar.window.state() == "withdrawn":
+            self.floating_toolbar.show()
+        else:
+            self.floating_toolbar.hide()
 
     def reset_all(self):
         reponse = messagebox.askyesno(self.app.i18n.t("dialog_confirm_title", "Confirmation"),self.app.i18n.t("dialog_reset_text", "Êtes-vous sûr de vouloir tout réinitialiser ?\n\nToutes vos touches seront perdues."))  

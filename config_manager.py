@@ -9,6 +9,10 @@ class Config:
             "next_key": "²",
             "leader_key": "f1",
             "toggle_app_key": "f10",
+            "toggle_toolbar_key": "f9",
+            "mode_all_key": "",
+            "mode_team1_key": "",
+            "mode_team2_key": "",
             "leader_name": "",
             "accounts_state": {},
             "accounts_team": {},
@@ -29,7 +33,10 @@ class Config:
             "persistent_character_binds": {}, 
             "cycle_row_binds": ["ctrl+F1", "ctrl+F2", "ctrl+F3", "ctrl+F4", "ctrl+F5", "ctrl+F6", "ctrl+F7", "ctrl+F8"],
             "keyboard_layout": "azerty_fr",
-            "language": "fr"
+            "language": "fr",   
+            "toolbar_x": 100,
+            "toolbar_y": 100,
+            "floating_toolbar_visible": True       
         }
         self.load()
 

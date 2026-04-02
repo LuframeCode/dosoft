@@ -195,12 +195,7 @@ class OrganizerApp:
             vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1) 
             if vk: return vk
             
-        if len(key_str) == 1:
-            vk_scan = ctypes.windll.user32.VkKeyScanW(ord(key_str))
-            vk = vk_scan & 0xFF
-            if vk != 0xFF:
-                return vk
-            return ord(key_str.upper())
+        if len(key_str) == 1: return ord(key_str.upper())
         if key_str.startswith('f') and key_str[1:].isdigit():
             return 0x6F + int(key_str[1:])
         return None
@@ -391,6 +386,10 @@ class OrganizerApp:
             if cfg.get("next_key"): self.register_action(cfg["next_key"], self.next_char)
             if cfg.get("leader_key"): self.register_action(cfg["leader_key"], self.focus_leader)
             if cfg.get("toggle_app_key"): self.register_action(cfg["toggle_app_key"], lambda: self.gui.root.after(0, self.gui.toggle_visibility))
+            if cfg.get("toggle_toolbar_key"): self.register_action(cfg["toggle_toolbar_key"], lambda: self.gui.root.after(0, self.gui.toggle_floating_toolbar))
+            if cfg.get("mode_all_key"): self.register_action(cfg["mode_all_key"], lambda: self.gui.root.after(0, self.gui.set_mode, "ALL"))
+            if cfg.get("mode_team1_key"): self.register_action(cfg["mode_team1_key"], lambda: self.gui.root.after(0, self.gui.set_mode, "Team 1"))
+            if cfg.get("mode_team2_key"): self.register_action(cfg["mode_team2_key"], lambda: self.gui.root.after(0, self.gui.set_mode, "Team 2"))
             keyboard.hook(self.global_hook_listener)
         except Exception: pass
 

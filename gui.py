@@ -176,8 +176,17 @@ class SettingsWindow(ctk.CTkToplevel):
         self.parent.create_hotkey_row(self.frame_team_hotkeys, "hotkey_mode_all", "mode_all_key", 1, 0)
         self.parent.create_hotkey_row(self.frame_team_hotkeys, "hotkey_mode_team1", "mode_team1_key", 2, 0)
         self.parent.create_hotkey_row(self.frame_team_hotkeys, "hotkey_mode_team2", "mode_team2_key", 3, 0)
-        
-        
+
+
+        self.lbl_settings_uhk = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_uhk", "Utilitaires"), font=title_font)
+        self.lbl_settings_uhk.pack(pady=(10, 5))
+        self.frame_uhk = ctk.CTkFrame(self.scroll_container)
+        self.frame_uhk.pack(fill="x", padx=10, pady=5)
+
+        self.parent.create_hotkey_row(self.frame_uhk, "hotkey_refresh", "refresh_key", 1, 0, "tooltip_refresh")
+        self.parent.create_hotkey_row(self.frame_uhk, "hotkey_quit", "quit_key", 1, 6, "tooltip_quit")
+
+
         frame_language = ctk.CTkFrame(self.scroll_container)
         frame_language.pack(fill="x", padx=10, pady=5)
         self.lbl_language = ctk.CTkLabel(frame_language, text=self.app.i18n.t("settings_language", "Langue"))
@@ -220,6 +229,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.btn_close.configure(text=self.app.i18n.t("settings_close", "Fermer"))
         self.lbl_settings_toolbar.configure(text=self.app.i18n.t("settings_floating_toolbar", "Barre Flottante"))
         self.lbl_settings_team.configure(text=self.app.i18n.t("settings_team", "Équipe"))
+        self.lbl_settings_uhk.configure(text=self.app.i18n.t("settings_uhk", "Raccourcis Utilitaires"))
 
 
 class OrganizerGUI:
@@ -316,8 +326,7 @@ class OrganizerGUI:
         self.create_hotkey_row(self.frame_keys, "hotkey_next", "next_key", 1, 3, "tooltip_next")
         self.create_hotkey_row(self.frame_keys, "hotkey_leader", "leader_key", 2, 0, "tooltip_leader")
         self.create_hotkey_row(self.frame_keys, "hotkey_toggle_ui", "toggle_app_key", 2, 3, "tooltip_toggle_ui")
-        self.create_hotkey_row(self.frame_keys, "hotkey_refresh", "refresh_key", 1, 6, "tooltip_refresh")
-        self.create_hotkey_row(self.frame_keys, "hotkey_quit", "quit_key", 2, 6, "tooltip_quit")
+
 
         self.frame_actions = ctk.CTkFrame(self.root)
         self.frame_actions.pack(fill="x", padx=15, pady=5)

@@ -86,5 +86,6 @@
   "header_instace_off": "Instance détectée",
   "button_yes": "Oui",
   "button_no": "Non",
-  "popup_conflict_instance_text": "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"
+  "popup_conflict_instance_text": "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?",
+  "settings_uhk": "Raccourcis Utilitaires"
 }

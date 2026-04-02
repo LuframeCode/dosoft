@@ -86,6 +86,6 @@
   "header_instace_off": "Instância detectada",
   "button_yes": "Sim",
   "button_no": "Não",
-  "popup_conflict_instance_text": "Uma instância de DOSOFT já está em execução!\n\nVocê deseja fechar a instância antiga para abrir esta?"
-
+  "popup_conflict_instance_text": "Uma instância de DOSOFT já está em execução!\n\nVocê deseja fechar a instância antiga para abrir esta?",
+  "settings_uhk": "Atalhos de Utilitários"
 }

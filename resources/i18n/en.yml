@@ -86,5 +86,6 @@
   "header_instance_off": "Instance detected",
   "button_yes": "Yes",
   "button_no": "No",
-  "popup_conflict_instance_text": "An instance of DOSOFT is already running!\n\nDo you want to close the old instance to open this one?"
+  "popup_conflict_instance_text": "An instance of DOSOFT is already running!\n\nDo you want to close the old instance to open this one?",
+  "settings_uhk": "Utility Hotkeys"
 }

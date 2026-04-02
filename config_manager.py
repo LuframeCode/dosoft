@@ -13,6 +13,7 @@ class Config:
             "mode_all_key": "",
             "mode_team1_key": "",
             "mode_team2_key": "",
+            "leaders_by_mode": {"Team 1": "", "Team 2": ""},
             "leader_name": "",
             "accounts_state": {},
             "accounts_team": {},
@@ -46,6 +47,13 @@ class Config:
                 with open(self.filename, 'r', encoding='utf-8') as f:
                     loaded = json.load(f)
                     self.data.update(loaded)
+                    leaders = self.data.get("leaders_by_mode", {})
+                    if not isinstance(leaders, dict):
+                        leaders = {}
+                    self.data["leaders_by_mode"] = {
+                        "Team 1": leaders.get("Team 1", ""),
+                        "Team 2": leaders.get("Team 2", "")
+                    }
             except Exception: pass
 
     def save(self):

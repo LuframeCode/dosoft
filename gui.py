@@ -95,7 +95,8 @@ class FloatingToolbar:
     def update_accounts(self, accounts):
         mode = self.app.config.data.get("current_mode", "ALL")
         self.combo_mode.set(mode)
-        leader_name = self.app.config.data.get("leader_name", "")
+        leader_name = self.app.logic.get_current_leader_name()
+        
         available = [acc["name"] for acc in accounts if mode == "ALL" or acc.get("team", "Team 1") == mode]
         if not available:
             available = ["---"]
@@ -106,7 +107,7 @@ class FloatingToolbar:
             self.combo_leader.set(available[0])
 
     def apply_translations(self):
-        self.lbl_title.configure(text=self.app.i18n.t("floating_toolbar_title", "≡ Doframe ≡"))
+        self.lbl_title.configure(text=self.app.i18n.t("floating_toolbar_title", "≡ DOSOFT ≡"))
         self.parent_gui.bind_i18n_tooltip(self.btn_show_gui, "tooltip_open_main_ui", "Open main interface")
         self.parent_gui.bind_i18n_tooltip(self.btn_refresh_overlay, "tooltip_refresh_pages", "Refresh Dofus pages")
 
@@ -498,7 +499,7 @@ class OrganizerGUI:
     def refresh_list(self, accounts):
         self.floating_toolbar.update_accounts(accounts)
         for widget in self.scroll_frame.winfo_children(): widget.destroy()
-        leader_name = self.app.config.data.get("leader_name", "")
+        leader_name = self.app.logic.get_current_leader_name()
         
         is_retro = self.app.config.data.get("game_version", "Unity") == "Rétro"
         retro_classes = ["Inconnu", "Feca", "Osamodas", "Enutrof", "Sram", "Xelor", "Ecaflip", "Eniripsa", "Iop", "Cra", "Sadida", "Sacrieur", "Pandawa"]
@@ -745,6 +746,7 @@ class OrganizerGUI:
         self.combo_mode.set(choice)
         self.floating_toolbar.combo_mode.set(choice)
         self.floating_toolbar.update_accounts(self.app.logic.all_accounts)
+        self.refresh_list(self.app.logic.all_accounts)
 
     def show_gui(self):
         self.root.deiconify()

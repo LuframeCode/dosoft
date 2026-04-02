@@ -70,13 +70,24 @@ class DofusLogic:
         
         self.all_accounts = sorted(nouveaux_comptes, key=lambda x: custom_order.index(x['name']))
         
-        self.leader_hwnd = None
-        leader_name = self.config.data.get("leader_name", "")
-        for acc in self.all_accounts:
-            if acc['name'] == leader_name: self.leader_hwnd = acc['hwnd']
+        self._sync_leader_hwnd()
                 
         return self.all_accounts
 
+    def get_current_leader_name(self):
+        mode = self.config.data.get("current_mode", "ALL")
+        if mode in ("Team 1", "Team 2"):
+            return self.config.data.get("leaders_by_mode", {}).get(mode, "")
+        return self.config.data.get("leader_name", "")
+
+    def _sync_leader_hwnd(self):
+        self.leader_hwnd = None
+        leader_name = self.get_current_leader_name()
+        for acc in self.all_accounts:
+            if acc['name'] == leader_name:
+                self.leader_hwnd = acc['hwnd']
+                break
+    
     def get_cycle_list(self):
         mode = self.config.data.get("current_mode", "ALL")
         return [acc for acc in self.all_accounts if acc['active'] and (mode == "ALL" or acc['team'] == mode)]
@@ -127,18 +138,32 @@ class DofusLogic:
         for acc in self.all_accounts:
             if acc['name'] == name: acc['team'] = new_team
         self.config.data["accounts_team"][name] = new_team
+        leaders_by_mode = self.config.data.setdefault("leaders_by_mode", {"Team 1": "", "Team 2": ""})
+        for team_name, leader_name in list(leaders_by_mode.items()):
+            if leader_name == name and team_name != new_team:
+                leaders_by_mode[team_name] = ""
+
+        if self.config.data.get("leader_name", "") == name and self.config.data.get("current_mode", "ALL") != "ALL":
+            self.config.data["leader_name"] = ""
+
+        self._sync_leader_hwnd()
         self.config.save()
 
     def set_mode(self, mode):
         self.config.data["current_mode"] = mode
+        self._sync_leader_hwnd()
         self.config.save()
 
     def set_leader(self, name):
-        self.leader_hwnd = None
-        self.config.data["leader_name"] = name
+        mode = self.config.data.get("current_mode", "ALL")
+        if mode in ("Team 1", "Team 2"):
+            self.config.data.setdefault("leaders_by_mode", {"Team 1": "", "Team 2": ""})
+            self.config.data["leaders_by_mode"][mode] = name
+        else:
+            self.config.data["leader_name"] = name
+        self._sync_leader_hwnd()
         self.config.save()
-        for acc in self.all_accounts:
-            if acc['name'] == name: self.leader_hwnd = acc['hwnd']
+
 
     def close_account_window(self, name):
         for acc in self.all_accounts:

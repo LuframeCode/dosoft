@@ -401,7 +401,7 @@ class OrganizerApp:
         if self.logic.leader_hwnd: 
             self.logic.focus_window(self.logic.leader_hwnd)
             cycle_list = self.logic.get_cycle_list()
-            leader_name = self.config.data.get("leader_name", "")
+            leader_name = self.logic.get_current_leader_name()
             for index, acc in enumerate(cycle_list):
                 if acc['name'] == leader_name:
                     self.current_idx = index

@@ -363,7 +363,10 @@ class OrganizerApp:
         self.mouse_hotkeys = {} 
         self.mouse_states = {}  
         
-        cfg = self.config.data
+        self.register_action('f5', self.refresh)
+        self.register_action('f12', self.quit_app)
+        
+        cfg = self.config.data 
         
         # Binds avancés dynamiques
         mode = cfg.get("advanced_bind_mode", "cycle")
@@ -383,8 +386,10 @@ class OrganizerApp:
             if cfg.get("next_key"): self.register_action(cfg["next_key"], self.next_char)
             if cfg.get("leader_key"): self.register_action(cfg["leader_key"], self.focus_leader)
             if cfg.get("toggle_app_key"): self.register_action(cfg["toggle_app_key"], lambda: self.gui.root.after(0, self.gui.toggle_visibility))
-            if cfg.get('refresh_key'): self.register_action(cfg['refresh_key'], self.refresh)
-            if cfg.get('quit_key'):    self.register_action(cfg['quit_key'],   self.quit_app) 
+            if cfg.get("toggle_toolbar_key"): self.register_action(cfg["toggle_toolbar_key"], lambda: self.gui.root.after(0, self.gui.toggle_floating_toolbar))
+            if cfg.get("mode_all_key"): self.register_action(cfg["mode_all_key"], lambda: self.gui.root.after(0, self.gui.set_mode, "ALL"))
+            if cfg.get("mode_team1_key"): self.register_action(cfg["mode_team1_key"], lambda: self.gui.root.after(0, self.gui.set_mode, "Team 1"))
+            if cfg.get("mode_team2_key"): self.register_action(cfg["mode_team2_key"], lambda: self.gui.root.after(0, self.gui.set_mode, "Team 2"))
             keyboard.hook(self.global_hook_listener)
         except Exception: pass
 

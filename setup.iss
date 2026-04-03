@@ -5,7 +5,7 @@
 ; ============================================================
 
 #define AppName      "Dosoft"
-#define AppVersion   "1.1.1"
+#define AppVersion   "1.2.1"
 #define AppPublisher "Dosoft"
 #define AppExeName   "Dosoft.exe"
 #define SourceDir    "dist"

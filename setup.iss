@@ -5,10 +5,19 @@
 ; ============================================================
 
 #define AppName      "Dosoft"
-#define AppVersion   "1.1.1"
 #define AppPublisher "Dosoft"
 #define AppExeName   "Dosoft.exe"
 #define SourceDir    "dist"
+#define VersionFile  "version.json"
+#define VersionRaw   FileRead(VersionFile)
+#define VersionKey   "\"version\": \""
+#define VersionStart Pos(VersionKey, VersionRaw)
+#if VersionStart > 0
+  #define VersionTail Copy(VersionRaw, VersionStart + Len(VersionKey), 255)
+  #define AppVersion Copy(VersionTail, 1, Pos("\"", VersionTail) - 1)
+#else
+  #define AppVersion "0.0.0"
+#endif
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}

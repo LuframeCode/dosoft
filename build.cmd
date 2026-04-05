@@ -41,6 +41,7 @@ python -m PyInstaller ^
     --add-data="resources\\i18n;resources\\i18n" ^
     --add-data="resources\\keyboards;resources\\keyboards" ^
     --add-data="logo.ico;." ^
+    --add-data="version.json;." ^
     --hidden-import=customtkinter ^
     --hidden-import=PIL ^
     --hidden-import=pygame ^

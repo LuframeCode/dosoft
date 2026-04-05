@@ -23,33 +23,48 @@ class DofusLogic:
                     if win32gui.GetClassName(hwnd) == "UnityWndClass":
                         windows_trouvees.append((hwnd, titre))
                 elif game_version == "Rétro":
-                    if "- Dofus Retro" in titre:
+                    if "Dofus Retro" in titre:
                         windows_trouvees.append((hwnd, titre))
             return True
 
         win32gui.EnumWindows(enum_windows_callback, None)
 
         nouveaux_comptes = []
+        menu_counter = 1 # Compteur pour différencier les fenêtres sans perso
+
         for hwnd, titre in windows_trouvees:
             titre_clean = titre.strip()
+            is_menu = False
             
             if game_version == "Unity":
-                if titre_clean.lower().startswith("dofus"): continue
-                parts = titre_clean.split(" - ")
-                pseudo = parts[0].strip()
-                classe = parts[1].strip() if len(parts) > 1 else "Inconnu"
+                # Si le titre commence par "dofus" (ex: "Dofus", "Dofus 3.0"), c'est souvent la page de connexion sans perso
+                if titre_clean.lower().startswith("dofus"): 
+                    pseudo = f"Menu Unity {menu_counter}"
+                    classe = "Inconnu"
+                    is_menu = True
+                    menu_counter += 1
+                else:
+                    parts = titre_clean.split(" - ")
+                    pseudo = parts[0].strip()
+                    classe = parts[1].strip() if len(parts) > 1 else "Inconnu"
             else:
-                # Mode Rétro : "Pseudo - Dofus Retro v1.47.21"
-                parts = titre_clean.split(" - Dofus Retro")
-                pseudo = parts[0].strip()
-                # NOUVEAU : On récupère la classe si on l'a déjà choisie, sinon "Inconnu"
-                classe = self.config.data["classes"].get(pseudo, "Inconnu")
+                # Mode Rétro : Si ça commence par "Dofus Retro" sans pseudo devant
+                if titre_clean.startswith("Dofus Retro") or " - " not in titre_clean:
+                    pseudo = f"Menu Rétro {menu_counter}"
+                    classe = "Inconnu"
+                    is_menu = True
+                    menu_counter += 1
+                else:
+                    parts = titre_clean.split(" - Dofus Retro")
+                    pseudo = parts[0].strip()
+                    classe = self.config.data["classes"].get(pseudo, "Inconnu")
                 
             self.config.data["classes"][pseudo] = classe
             etat_actif = self.config.data["accounts_state"].get(pseudo, True)
             equipe = self.config.data["accounts_team"].get(pseudo, "Team 1")
             
-            nouveaux_comptes.append({'name': pseudo, 'hwnd': hwnd, 'active': etat_actif, 'team': equipe, 'classe': classe})
+            # On ajoute la clé "is_menu" pour indiquer à l'UI que c'est une page de connexion
+            nouveaux_comptes.append({'name': pseudo, 'hwnd': hwnd, 'active': etat_actif, 'team': equipe, 'classe': classe, 'is_menu': is_menu})
 
         custom_order = self.config.data.get("custom_order", [])
         

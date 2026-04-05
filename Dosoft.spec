@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('skin', 'skin'), ('sounds', 'sounds'), ('resources\\\\i18n', 'resources\\\\i18n'), ('resources\\\\keyboards', 'resources\\\\keyboards'), ('logo.ico', '.')]
+datas = [('skin', 'skin'), ('sounds', 'sounds'), ('resources\\\\i18n', 'resources\\\\i18n'), ('resources\\\\keyboards', 'resources\\\\keyboards'), ('logo.ico', '.'), ('version.json', '.')]
 binaries = []
 hiddenimports = ['customtkinter', 'PIL', 'pygame', 'win32api', 'win32con', 'win32gui', 'win32process', 'keyboard']
 tmp_ret = collect_all('customtkinter')

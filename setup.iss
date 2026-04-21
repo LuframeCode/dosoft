@@ -1,12 +1,12 @@
 ; ============================================================
 ;  DOSOFT - Script Inno Setup
-;  Prerequis : Inno Setup 6+ (https://jrsoftware.org/isinfo.php)
-;  A lancer APRES la compilation Nuitka (build_dosoft.cmd)
+;  Prerequis : Inno Setup 6+
 ; ============================================================
 
 #define AppName      "Dosoft"
 #define AppPublisher "Dosoft"
 #define AppExeName   "Dosoft.exe"
+#define SourceDir    "dist"
 #define SourceDir    "dist"
 #define VersionFile  "version.json"
 #define VersionRaw   FileRead(VersionFile)
@@ -55,39 +55,35 @@ UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}
-VersionInfoDescription=Gestionnaire multi-compte Dofus - Dosoft
+VersionInfoDescription=Gestionnaire multi-compte Dofus - {#AppName}
 
 [Languages]
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau";         GroupDescription: "Raccourcis :"
+Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; GroupDescription: "Raccourcis :"
 Name: "startmenuicon"; Description: "Créer un raccourci dans le Menu Démarrer"; GroupDescription: "Raccourcis :"
 
 [Files]
-; --- Executable principal (compilé par Nuitka/PyInstaller) ---
+; --- Executable principal ---
 Source: "{#SourceDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 ; --- Ressources ---
 Source: "logo.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "skin\*";     DestDir: "{app}\skin";   Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "sounds\*";   DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "skin\*"; DestDir: "{app}\skin"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-; --- Raccourci Bureau ---
+; --- Raccourcis ---
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\logo.ico"; Tasks: desktopicon
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\logo.ico"; Tasks: startmenuicon
 
-; --- Raccourci Menu Démarrer ---
-Name: "{group}\{#AppName}";                    Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\logo.ico"; Tasks: startmenuicon
-Name: "{group}\Désinstaller {#AppName}";       Filename: "{uninstallexe}"
+; CORRECTION ICI : On ajoute "Tasks: startmenuicon" à la fin de la ligne
+Name: "{group}\Désinstaller {#AppName}"; Filename: "{uninstallexe}"; Tasks: startmenuicon
 
 [Run]
 ; --- Lancement après installation ---
 Filename: "{app}\{#AppExeName}"; Description: "Lancer {#AppName} maintenant"; Flags: nowait postinstall skipifsilent runascurrentuser
-
-; [UninstallDelete]
-; Type: files;          Name: "{app}\settings.json"
-; Type: filesandordirs; Name: "{app}"
 
 [Code]
 function GetUninstallString(): String;
@@ -95,10 +91,13 @@ var
   sUnInstPath: String;
   sUnInstallString: String;
 begin
-  sUnInstPath := ExpandConstant('Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1');
+  // Chemin de désinstallation écrit en dur pour éviter les bugs d'accolades avec ExpandConstant
+  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}_is1';
   sUnInstallString := '';
+  
   if not RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstallString) then
     RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstallString);
+    
   Result := sUnInstallString;
 end;
 
@@ -135,22 +134,23 @@ begin
   BackupPath := ExpandConstant('{tmp}\settings_backup.json');
 
   if (CurStep = ssInstall) then begin
-    // 1. On sauvegarde le fichier existant AVANT de désinstaller l'ancienne version
+    // 1. Sauvegarde du settings.json de l'ancienne version
     if FileExists(SettingsPath) then begin
       FileCopy(SettingsPath, BackupPath, False);
     end;
 
+    // Désinstallation silencieuse
     if (IsUpgrade()) then
       UnInstallOldVersion();
   end;
 
   if (CurStep = ssPostInstall) then begin
-    // 2. On restaure le fichier dans le dossier tout neuf
+    // 2. Restauration du settings.json
     if FileExists(BackupPath) then begin
       FileCopy(BackupPath, SettingsPath, False);
     end;
 
-    // Après installation : exclusion Windows Defender pour éviter faux positifs
+    // Exclusion Windows Defender
     ExePath := ExpandConstant('{app}\{#AppExeName}');
     Exec('powershell.exe',
       '-ExecutionPolicy Bypass -Command "Add-MpPreference -ExclusionPath ''' + ExePath + '''"',

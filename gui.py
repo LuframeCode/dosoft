@@ -71,6 +71,26 @@ class SettingsWindow(ctk.CTkToplevel):
         self.var_keyboard_layout = ctk.StringVar(value=self.app.config.data.get("keyboard_layout", "azerty_fr"))
         ctk.CTkOptionMenu(frame_keyboard, values=["azerty_fr", "qwerty_us"], variable=self.var_keyboard_layout, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
         
+        # --- BLOC MOTEUR NOTIFICATIONS (DEBUG) ---
+        frame_debug = ctk.CTkFrame(self.scroll_container)
+        frame_debug.pack(fill="x", padx=10, pady=5)
+        
+        self.lbl_debug = ctk.CTkLabel(frame_debug, text="Moteur Auto-Focus (Si bug)")
+        self.lbl_debug.pack(side="left", padx=8, pady=8)
+        
+        # On définit v2 par défaut
+        self.var_notif_api = ctk.StringVar(value=self.app.config.data.get("notif_api_mode", "v2"))
+        
+        # Le sélecteur avec les 3 versions
+        combo_debug = ctk.CTkOptionMenu(
+            frame_debug, 
+            values=["v1", "v2", "v3"], 
+            variable=self.var_notif_api, 
+            command=self.on_notif_api_change
+        )
+        combo_debug.pack(side="right", padx=8, pady=8)
+        self.parent.bind_i18n_tooltip(combo_debug, "tooltip_api_mode", "Changez de version si l'autofocus cesse de fonctionner.\nNécessite un redémarrage.")
+        
         self.btn_close = ctk.CTkButton(self.scroll_container, text=self.app.i18n.t("settings_close", "Fermer"), fg_color="#7f8c8d", command=self.destroy)
         self.btn_close.pack(pady=(20, 10))
 
@@ -85,9 +105,25 @@ class SettingsWindow(ctk.CTkToplevel):
         self.app.config.save()
         self.parent.apply_translations()
         self.apply_translations()
+        self.app.config.data["notif_api_mode"] = self.var_notif_api.get()
 
         if previous_language != self.var_language.get():
             self.title(self.app.i18n.t("settings_title", "⚙️ Paramètres"))
+            
+    def on_notif_api_change(self, choice):
+        self.app.config.data["notif_api_mode"] = choice
+        self.app.config.save()
+        
+        rep = messagebox.askyesno(
+            "Redémarrage requis", 
+            "Pour appliquer le changement de moteur d'Autofocus, DOSOFT doit être redémarré", 
+            parent=self
+        )
+        if rep:
+            # On utilise ta fonction de fermeture native qui nettoie tout correctement
+            self.app.quit_app()
+            
+
 
     def apply_translations(self):
         self.title(self.app.i18n.t("settings_title", "⚙️ Paramètres"))
@@ -144,6 +180,7 @@ class OrganizerGUI:
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
         
         self.lbl_app_title = ctk.CTkLabel(self.header_f, text=APP_TITLE, font=ctk.CTkFont(size=20, weight="bold"))
+
         self.lbl_app_title.pack(side="left")
         
         self.btn_settings = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_settings", "⚙️ Paramètres"), fg_color="#34495e", hover_color="#2c3e50", width=120, command=self.open_settings)
@@ -252,6 +289,8 @@ class OrganizerGUI:
 
     def apply_translations(self):
         none_label = self.app.i18n.t("none", "Aucun")
+        self.root.title(self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
+        self.lbl_app_title.configure(text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
         self.root.title(APP_TITLE)
         self.lbl_app_title.configure(text=APP_TITLE)
         self.btn_settings.configure(text=self.app.i18n.t("header_settings", "⚙️ Paramètres"))
@@ -293,7 +332,7 @@ class OrganizerGUI:
             self.app.config.data["tutorial_done"] = True
             self.app.config.save()
 
-        rep = messagebox.askyesno(self.app.i18n.t("dialog_tutorial_title", "Tutoriel Vidéo"),self.app.i18n.t("dialog_tutorial_text", "Voulez-vous ouvrir la vidéo de présentation sur YouTube dans votre navigateur web ?"),self.app.i18n.t("button_yes", "Oui"),self.app.i18n.t("button_no", "Non"))
+        rep = messagebox.askyesno(self.app.i18n.t("dialog_tutorial_title", "Tutoriel Vidéo"), self.app.i18n.t("dialog_tutorial_text", "Voulez-vous ouvrir la vidéo de présentation sur YouTube dans votre navigateur web ?"))
         if rep:
             webbrowser.open("")
 

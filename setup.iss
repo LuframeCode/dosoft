@@ -7,7 +7,7 @@
 #define AppPublisher "Dosoft"
 #define AppExeName   "Dosoft.exe"
 #define SourceDir    "dist"
-=======
+#define SourceDir    "dist"
 #define VersionFile  "version.json"
 #define VersionRaw   FileRead(VersionFile)
 #define VersionKey   "\"version\": \""

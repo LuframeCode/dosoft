@@ -140,8 +140,6 @@ class OrganizerGUI:
     def __init__(self, app_controller):
         self.app = app_controller
         self.root = ctk.CTk()
-        self.root.title(self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
-
         self.root.title(APP_TITLE)
         
         screen_w = self.root.winfo_screenwidth()
@@ -181,8 +179,6 @@ class OrganizerGUI:
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
         
-        self.lbl_app_title = ctk.CTkLabel(self.header_f, text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"), font=ctk.CTkFont(size=20, weight="bold"))
-
         self.lbl_app_title = ctk.CTkLabel(self.header_f, text=APP_TITLE, font=ctk.CTkFont(size=20, weight="bold"))
 
         self.lbl_app_title.pack(side="left")
@@ -336,7 +332,7 @@ class OrganizerGUI:
             self.app.config.data["tutorial_done"] = True
             self.app.config.save()
 
-        rep = messagebox.askyesno(self.app.i18n.t("dialog_tutorial_title", "Tutoriel Vidéo"),self.app.i18n.t("dialog_tutorial_text", "Voulez-vous ouvrir la vidéo de présentation sur YouTube dans votre navigateur web ?"),self.app.i18n.t("button_yes", "Oui"),self.app.i18n.t("button_no", "Non"))
+        rep = messagebox.askyesno(self.app.i18n.t("dialog_tutorial_title", "Tutoriel Vidéo"), self.app.i18n.t("dialog_tutorial_text", "Voulez-vous ouvrir la vidéo de présentation sur YouTube dans votre navigateur web ?"))
         if rep:
             webbrowser.open("")
 

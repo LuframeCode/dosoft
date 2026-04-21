@@ -11,6 +11,7 @@ import webbrowser
 from PIL import Image, ImageTk
 from i18n_manager import I18nManager
 from config_manager import Config
+from app_version import APP_TITLE
 
 
 ctk.set_appearance_mode("Dark")  
@@ -139,11 +140,9 @@ class OrganizerGUI:
     def __init__(self, app_controller):
         self.app = app_controller
         self.root = ctk.CTk()
-<<<<<<< Updated upstream
         self.root.title(self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
-=======
+
         self.root.title(APP_TITLE)
->>>>>>> Stashed changes
         
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
@@ -182,11 +181,10 @@ class OrganizerGUI:
         self.header_f = ctk.CTkFrame(self.root, fg_color="transparent")
         self.header_f.pack(fill="x", padx=15, pady=(15, 5))
         
-<<<<<<< Updated upstream
         self.lbl_app_title = ctk.CTkLabel(self.header_f, text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"), font=ctk.CTkFont(size=20, weight="bold"))
-=======
+
         self.lbl_app_title = ctk.CTkLabel(self.header_f, text=APP_TITLE, font=ctk.CTkFont(size=20, weight="bold"))
->>>>>>> Stashed changes
+
         self.lbl_app_title.pack(side="left")
         
         self.btn_settings = ctk.CTkButton(self.header_f, text=self.app.i18n.t("header_settings", "⚙️ Paramètres"), fg_color="#34495e", hover_color="#2c3e50", width=120, command=self.open_settings)
@@ -295,13 +293,10 @@ class OrganizerGUI:
 
     def apply_translations(self):
         none_label = self.app.i18n.t("none", "Aucun")
-<<<<<<< Updated upstream
         self.root.title(self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
         self.lbl_app_title.configure(text=self.app.i18n.t("app_title", "DOSOFT v1.1.1"))
-=======
         self.root.title(APP_TITLE)
         self.lbl_app_title.configure(text=APP_TITLE)
->>>>>>> Stashed changes
         self.btn_settings.configure(text=self.app.i18n.t("header_settings", "⚙️ Paramètres"))
         self.btn_tuto.configure(text=self.app.i18n.t("header_tutorial", "🎓 Tuto"))
         self.btn_off.configure(text=self.app.i18n.t("header_off", "🔴 OFF"))

@@ -16,6 +16,7 @@ from pystray import MenuItem as item
 import asyncio
 import requests
 from tkinter import messagebox 
+from app_version import CURRENT_VERSION, APP_TITLE
 
 # --- FORCAGE DU DPI AWARENESS (Règle les soucis 4K / Zoom Windows) ---
 try: ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -467,36 +468,7 @@ class OrganizerApp:
         threading.Thread(target=run_async_loop, daemon=True).start()
 
     async def poll_notifications(self):
-<<<<<<< Updated upstream
         # Boucle globale pour relancer la connexion si le service Windows redémarre
-        while True:
-            try:
-=======
-        # Aiguilleur : on lit le choix de l'utilisateur
-        api_mode = self.config.data.get("notif_api_mode", "v3")
-        
-        if api_mode == "v1":
-            await self._poll_notifications_v1()
-        elif api_mode == "v2":
-            await self._poll_notifications_v2()
-        elif api_mode == "v4":
-            await self._poll_notifications_v4()
-        else:
-            await self._poll_notifications_v3()
-
-    # ==========================================
-    # MOTEUR V1 : SIMPLE (Aucun nettoyage)
-    # ==========================================
-    async def _poll_notifications_v1(self):
-        try:
-            listener = UserNotificationListener.current
-            access = await listener.request_access_async()
-            if access != 1: return
-        except Exception: return
-
-        seen_ids = set()
-        first_pass = True 
-
         while True:
             try:
                 is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
@@ -507,6 +479,7 @@ class OrganizerApp:
                 
                 for n in notifs:
                     current_ids.add(n.id)
+
                     if n.id not in seen_ids:
                         seen_ids.add(n.id)
                         if not first_pass and is_retro and is_autofocus_on:
@@ -535,7 +508,7 @@ class OrganizerApp:
     async def _poll_notifications_v2(self):
         while True:
             try:
->>>>>>> Stashed changes
+
                 listener = UserNotificationListener.current
                 access = await listener.request_access_async()
                 if access != 1: return
@@ -543,23 +516,15 @@ class OrganizerApp:
                 seen_ids = set()
                 first_pass = True 
 
-<<<<<<< Updated upstream
                 # Fonction asynchrone pour effacer la notification de Windows après 1 seconde
-=======
->>>>>>> Stashed changes
                 async def remove_notif_delayed(notif_id):
                     await asyncio.sleep(1.0)
                     try:
                         listener.remove_notification(notif_id)
-<<<<<<< Updated upstream
                     except Exception:
                         pass
 
                 # Boucle de lecture très rapide
-=======
-                    except Exception: pass
-
->>>>>>> Stashed changes
                 while True:
                     try:
                         is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
@@ -570,7 +535,6 @@ class OrganizerApp:
                         
                         for n in notifs:
                             current_ids.add(n.id)
-<<<<<<< Updated upstream
                             # Si c'est une nouvelle notification...
                             if n.id not in seen_ids:
                                 seen_ids.add(n.id)
@@ -602,100 +566,7 @@ class OrganizerApp:
                                             
                                     except Exception: pass
                                     
-                        seen_ids.intersection_update(current_ids)
-                        first_pass = False 
-                    except Exception:
-                        # Casse la boucle interne en cas de perte de l'API Windows
-                        break 
-                    
-                    # Fréquence ultra réactive comme tu l'as demandé
-                    await asyncio.sleep(0.5) 
-
-            except Exception:
-                # Petite pause en cas d'erreur critique avant de relancer le listener
-                await asyncio.sleep(5)
-                
-# --- SYSTÈME DE VÉRIFICATION DE VERSION ---
-CURRENT_VERSION = "1.2.0" 
-=======
-                            if n.id not in seen_ids:
-                                seen_ids.add(n.id)
-                                
-                                if not first_pass and is_retro and is_autofocus_on:
-                                    try:
-                                        binding = n.notification.visual.bindings[0]
-                                        texts = [t.text for t in binding.get_text_elements()]
-                                        is_dofus_notif = False
-                                        
-                                        for ligne in texts:
-                                            if " - Dofus Retro" in ligne:
-                                                is_dofus_notif = True
-                                                pseudo = ligne.split(" - ")[0].strip()
-                                                cycle_list = self.logic.get_cycle_list()
-                                                for index, acc in enumerate(cycle_list):
-                                                    if acc['name'] == pseudo:
-                                                        self.gui.root.after(0, self.logic.focus_window, acc['hwnd'])
-                                                        self.current_idx = index
-                                                        break
-                                                break 
-                                        
-                                        if is_dofus_notif:
-                                            asyncio.create_task(remove_notif_delayed(n.id))
-                                            
-                                    except Exception: pass
-                                    
-                        seen_ids.intersection_update(current_ids)
-                        first_pass = False 
-                    except Exception: break 
-                    await asyncio.sleep(0.5) 
-            except Exception:
-                await asyncio.sleep(5)
-
-    # ==========================================
-    # MOTEUR V3 : TIMEOUT ANTI-FREEZE + NETTOYAGE (Recommandé)
-    # ==========================================
-    async def _poll_notifications_v3(self):
-        try:
-            listener = UserNotificationListener.current
-            access = await listener.request_access_async()
-            if access != 1: 
-                await asyncio.sleep(5) 
-                return
-        except Exception:
-            await asyncio.sleep(5)
-            return
-
-        seen_ids = set()
-        first_pass = True 
-
-        async def remove_notif_delayed(notif_id):
-            await asyncio.sleep(1.0)
-            try: listener.remove_notification(notif_id)
-            except Exception: pass
-
-        while True:
-            try:
-                is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
-                is_autofocus_on = self.config.data.get("auto_focus_retro", False)
-                
-                notifs = await asyncio.wait_for(
-                    listener.get_notifications_async(NotificationKinds.TOAST),
-                    timeout=3.0
-                )
-                
-                current_ids = set()
-                for n in notifs:
-                    current_ids.add(n.id)
-                    if n.id not in seen_ids:
-                        seen_ids.add(n.id)
-                        try:
-                            binding = n.notification.visual.bindings[0]
-                            texts = [t.text for t in binding.get_text_elements()]
-                            is_dofus_notif = False
-                            
-                            for ligne in texts:
-                                if " - Dofus Retro" in ligne:
-                                    is_dofus_notif = True
+                                    # Auto-focus si ce n'est pas le 1er scan et que l'option est active
                                     if not first_pass and is_retro and is_autofocus_on:
                                         pseudo = ligne.split(" - ")[0].strip()
                                         cycle_list = self.logic.get_cycle_list()
@@ -706,6 +577,8 @@ CURRENT_VERSION = "1.2.0"
                                                 break
                                     break 
                                     
+                            # Nettoyage automatique : on clear SEULEMENT les notifs Dofus Rétro
+                            # (Même au first_pass, ça vide l'historique Windows pour éviter le crash)
                             if is_dofus_notif:
                                 asyncio.create_task(remove_notif_delayed(n.id))
                                 
@@ -714,17 +587,15 @@ CURRENT_VERSION = "1.2.0"
                 seen_ids.intersection_update(current_ids)
                 first_pass = False 
                 
-            except asyncio.TimeoutError:
-                pass # Freeze de Windows ignoré
             except Exception: 
-                break # Crash API -> Redémarrage boucle
+                # Si Windows sature un quart de seconde, on ignore et on continue
+                pass
             
+            # Focus ultra-réactif (0.5s)
             await asyncio.sleep(0.5)
-            
-
                 
-# --- SYSTÈME DE VÉRIFICATION DE VERSION ---
->>>>>>> Stashed changes
+
+CURRENT_VERSION = "1.2.2" 
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
 def check_version(i18n=None):
@@ -777,11 +648,8 @@ def handle_multiple_instances():
         root.attributes("-topmost", True)
         rep = messagebox.askyesno(i18n.t("header_instace_off", "Instance détectée"),i18n.t("popup_conflict_instance_text","Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"))
         if rep:
-<<<<<<< Updated upstream
-            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.0")
-=======
-            hwnd = win32gui.FindWindow(None, APP_TITLE)
->>>>>>> Stashed changes
+           
+            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.1")
             if hwnd:
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 try:

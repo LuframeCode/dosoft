@@ -35,6 +35,7 @@ from config_manager import Config
 from logic import DofusLogic
 from gui import OrganizerGUI
 from radial_menu import RadialMenu
+from overlay_bar import OverlayBar
 from i18n_manager import I18nManager
 from keyboard_layout_manager import KeyboardLayoutManager
 
@@ -67,26 +68,59 @@ class OrganizerApp:
         self.mouse_states = {}
         
         self.radial_focus = RadialMenu(self.gui.root, self.on_radial_focus_select, accent_color="#2ecc71", hover_color="#27ae60", center_icon_path="skin/character.png")
-        
+
         saved_vol = self.config.data.get("volume_level", 50) / 100.0
         self.radial_focus.set_base_volume(saved_vol)
-        
+
+        self.prev_idx = None
+        self.last_focused: dict = {}
+
+        self.overlay = OverlayBar(self.gui.root, self)
+
         threading.Thread(target=self.background_listener, daemon=True).start()
-        
+        threading.Thread(target=self._winevent_thread, daemon=True).start()
+
         self.setup_hotkeys()
         self.refresh()
         self.start_notification_listener()
         self.setup_system_tray()
-        
+
         self.gui.root.after(1000, self.check_conflicting_software)
 
         if not self.config.data.get("tutorial_done", False):
             self.gui.root.after(800, self.gui.launch_tutorial)
     
+    def _make_tray_image(self):
+        from PIL import ImageDraw, ImageFont
+        size = 64
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        # Navy circle background
+        draw.ellipse([2, 2, size - 2, size - 2], fill=(26, 42, 78, 255))
+        # White "D" letter
+        try:
+            font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 38)
+        except Exception:
+            font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), "D", font=font)
+        tx = (size - (bbox[2] - bbox[0])) // 2 - bbox[0]
+        ty = (size - (bbox[3] - bbox[1])) // 2 - bbox[1]
+        draw.text((tx, ty), "D", fill=(46, 204, 113, 255), font=font)
+        # Thin green ring
+        draw.ellipse([2, 2, size - 2, size - 2], outline=(46, 204, 113, 200), width=2)
+        return img
+
     def setup_system_tray(self):
-        icon_path = "logo.ico" 
-        try: image = Image.open(icon_path)
-        except: image = Image.new('RGB', (64, 64), color=(44, 62, 80))
+        try:
+            image = self._make_tray_image()
+        except Exception:
+            try:
+                image = Image.open("logo.ico").convert("RGBA")
+            except Exception:
+                image = Image.new("RGBA", (64, 64), (26, 42, 78, 255))
+
+        n_active = len([a for a in self.logic.all_accounts if a.get("active")])
+        tooltip = f"DOSOFT — {n_active} compte{'s' if n_active != 1 else ''} actif{'s' if n_active != 1 else ''}"
 
         menu = pystray.Menu(
             item(self.i18n.t("tray_toggle", "Afficher/Cacher"), self.toggle_from_tray, default=True),
@@ -94,8 +128,15 @@ class OrganizerApp:
             item(self.i18n.t("tray_refresh", "Rafraîchir"), self.refresh_from_tray),
             item(self.i18n.t("tray_quit", "Quitter"), self.quit_from_tray)
         )
-        self.tray_icon = pystray.Icon("dosoft_tray", image, "DOSOFT", menu)
+        self.tray_icon = pystray.Icon("dosoft_tray", image, tooltip, menu)
         self.tray_icon.run_detached()
+
+    def update_tray_tooltip(self):
+        try:
+            n_active = len([a for a in self.logic.all_accounts if a.get("active")])
+            self.tray_icon.title = f"DOSOFT — {n_active} compte{'s' if n_active != 1 else ''} actif{'s' if n_active != 1 else ''}"
+        except Exception:
+            pass
 
     def toggle_from_tray(self, icon, item):
         def safe_toggle():
@@ -103,8 +144,12 @@ class OrganizerApp:
                 self.gui.root.deiconify()
                 self.gui.root.lift()
                 self.gui.root.focus_force()
+                if self.config.data.get("overlay_enabled", True):
+                    self.overlay.hide()
             else:
                 self.gui.root.withdraw()
+                if self.config.data.get("overlay_enabled", True):
+                    self.overlay.show()
         self.gui.root.after(0, safe_toggle)
 
     def refresh_from_tray(self, icon, item):
@@ -282,7 +327,7 @@ class OrganizerApp:
                     radial_was_open = False
                     self.gui.root.after(0, self.radial_focus.hide)
 
-            # Synchronisation de l'index au clic manuel
+            # Synchronisation de l'index au clic manuel + AFK timer + overlay highlight
             try:
                 fg_hwnd = win32gui.GetForegroundWindow()
                 cycle_list = self.logic.get_cycle_list()
@@ -290,7 +335,10 @@ class OrganizerApp:
                     for index, acc in enumerate(cycle_list):
                         if acc['hwnd'] == fg_hwnd:
                             if self.current_idx != index:
+                                self.prev_idx = self.current_idx
                                 self.current_idx = index
+                            self.last_focused[acc['name']] = time.time()
+                            self.gui.root.after(0, self.overlay.set_active, acc['name'])
                             break
             except Exception: pass
             time.sleep(0.01)
@@ -390,13 +438,21 @@ class OrganizerApp:
             if cfg.get("leader_key"): self.register_action(cfg["leader_key"], self.focus_leader)
             if cfg.get("toggle_app_key"): self.register_action(cfg["toggle_app_key"], lambda: self.gui.root.after(0, self.gui.toggle_visibility))
             if cfg.get('refresh_key'): self.register_action(cfg['refresh_key'], self.refresh)
-            if cfg.get('quit_key'):    self.register_action(cfg['quit_key'],   self.quit_app) 
+            if cfg.get('quit_key'):    self.register_action(cfg['quit_key'],   self.quit_app)
+            if cfg.get("back_key"):    self.register_action(cfg["back_key"],   self.focus_prev)
+            if cfg.get("broadcast_mode") and cfg.get("broadcast_key"):
+                self.register_action(cfg["broadcast_key"], self.trigger_broadcast)
             keyboard.hook(self.global_hook_listener)
         except Exception: pass
 
-    def refresh(self): 
+    def refresh(self):
         slots = self.logic.scan_slots()
         self.gui.root.after(0, self.gui.refresh_list, slots)
+        self.gui.root.after(0, self._post_refresh, slots)
+
+    def _post_refresh(self, slots):
+        self.overlay.rebuild(slots)
+        self.update_tray_tooltip()
     
     def focus_leader(self):
         if self.logic.leader_hwnd: 
@@ -411,14 +467,78 @@ class OrganizerApp:
     def next_char(self):
         cycle_list = self.logic.get_cycle_list()
         if not cycle_list: return
+        self.prev_idx = self.current_idx
         self.current_idx = (self.current_idx + 1) % len(cycle_list)
         self.logic.focus_window(cycle_list[self.current_idx]['hwnd'])
 
     def prev_char(self):
         cycle_list = self.logic.get_cycle_list()
         if not cycle_list: return
+        self.prev_idx = self.current_idx
         self.current_idx = (self.current_idx - 1) % len(cycle_list)
         self.logic.focus_window(cycle_list[self.current_idx]['hwnd'])
+
+    def focus_prev(self):
+        if self.prev_idx is None: return
+        cycle_list = self.logic.get_cycle_list()
+        if not cycle_list or self.prev_idx >= len(cycle_list): return
+        old = self.current_idx
+        self.current_idx = self.prev_idx
+        self.prev_idx = old
+        self.logic.focus_window(cycle_list[self.current_idx]['hwnd'])
+
+    def trigger_broadcast(self):
+        vk = self.config.data.get("broadcast_vk", 0)
+        if vk:
+            self.logic.broadcast_keypress(vk)
+
+    def _winevent_thread(self):
+        """Background thread that auto-refreshes when a Dofus window is created/destroyed."""
+        import ctypes.wintypes
+        EVENT_OBJECT_CREATE = 0x8000
+        EVENT_OBJECT_DESTROY = 0x8001
+        WINEVENT_OUTOFCONTEXT = 0x0000
+
+        last_refresh = [0.0]
+        DEBOUNCE = 2.0
+
+        WinEventProc = ctypes.WINFUNCTYPE(
+            None,
+            ctypes.wintypes.HANDLE,
+            ctypes.wintypes.DWORD,
+            ctypes.wintypes.HWND,
+            ctypes.wintypes.LONG,
+            ctypes.wintypes.LONG,
+            ctypes.wintypes.DWORD,
+            ctypes.wintypes.DWORD,
+        )
+
+        def callback(hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
+            try:
+                if hwnd and idObject == 0:
+                    cls = win32gui.GetClassName(hwnd) if hwnd else ""
+                    title = win32gui.GetWindowText(hwnd) if hwnd else ""
+                    is_dofus = (cls == "UnityWndClass") or ("Dofus Retro" in title)
+                    if is_dofus:
+                        now = time.time()
+                        if now - last_refresh[0] > DEBOUNCE:
+                            last_refresh[0] = now
+                            self.gui.root.after(600, self.refresh)
+            except Exception:
+                pass
+
+        proc = WinEventProc(callback)
+        hook = ctypes.windll.user32.SetWinEventHook(
+            EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY,
+            0, proc, 0, 0, WINEVENT_OUTOFCONTEXT
+        )
+        if not hook:
+            return
+        msg = ctypes.wintypes.MSG()
+        while ctypes.windll.user32.GetMessageW(ctypes.byref(msg), 0, 0, 0):
+            ctypes.windll.user32.TranslateMessage(ctypes.byref(msg))
+            ctypes.windll.user32.DispatchMessageW(ctypes.byref(msg))
+        ctypes.windll.user32.UnhookWinEvent(hook)
 
     def quit_app(self):
         my_pid = os.getpid()
@@ -514,10 +634,6 @@ class OrganizerApp:
             await asyncio.sleep(0.5)
                 
 # --- SYSTÈME DE VÉRIFICATION DE VERSION ---
-<<<<<<< fix/crash-notifrétro
-CURRENT_VERSION = "1.2.1" 
-=======
->>>>>>> dev
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
 def check_version(i18n=None):
@@ -570,11 +686,7 @@ def handle_multiple_instances():
         root.attributes("-topmost", True)
         rep = messagebox.askyesno(i18n.t("header_instace_off", "Instance détectée"),i18n.t("popup_conflict_instance_text","Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"))
         if rep:
-<<<<<<< fix/crash-notifrétro
-            hwnd = win32gui.FindWindow(None, "DOSOFT v1.2.1")
-=======
             hwnd = win32gui.FindWindow(None, APP_TITLE)
->>>>>>> dev
             if hwnd:
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 try:

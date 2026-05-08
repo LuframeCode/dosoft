@@ -32,6 +32,25 @@ class Config:
             "cycle_row_binds": ["ctrl+F1", "ctrl+F2", "ctrl+F3", "ctrl+F4", "ctrl+F5", "ctrl+F6", "ctrl+F7", "ctrl+F8"],
             "keyboard_layout": "azerty_fr",
             "language": "fr",
+            # --- Overlay bar ---
+            "overlay_enabled": True,
+            "overlay_x": None,
+            "overlay_y": None,
+            # --- Broadcast mode ---
+            "broadcast_mode": False,
+            "broadcast_key": "",
+            "broadcast_vk": 0,
+            # --- Per-account customisation ---
+            "account_icons": {},
+            "account_labels": {},
+            # --- Teams ---
+            "team_count": 2,
+            "team_names": {"Team 1": "Team 1", "Team 2": "Team 2", "Team 3": "Team 3", "Team 4": "Team 4"},
+            # --- Layout manager ---
+            "layout_presets": {},
+            # --- Focus history ---
+            "back_key": "",
+            # --- AFK timer (runtime-only, not persisted, but key kept for safety) ---
         }
         self.load()
 

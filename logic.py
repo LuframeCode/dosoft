@@ -1,8 +1,21 @@
 import win32gui
 import win32con
+import win32api
 import ctypes
 import win32process
 import time
+import os
+
+from overlay_bar import CLASSE_TO_SKIN
+
+
+def get_account_icon_path(name, classe, config):
+    custom = config.data.get("account_icons", {}).get(name)
+    if custom and os.path.exists(custom):
+        return custom
+    key = classe.lower().replace(" ", "_") if classe else ""
+    path = CLASSE_TO_SKIN.get(key, "skin/character.png")
+    return path if os.path.exists(path) else "skin/character.png"
 
 class DofusLogic:
     def __init__(self, config):
@@ -202,6 +215,90 @@ class DofusLogic:
             if self.leader_hwnd:
                 self.focus_window(self.leader_hwnd)
         except Exception: pass
+
+    def broadcast_keypress(self, vk_code: int):
+        for acc in self.get_cycle_list():
+            hwnd = acc["hwnd"]
+            try:
+                win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+                win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0xC0000001)
+            except Exception:
+                pass
+
+    def minimize_all(self):
+        for acc in self.get_cycle_list():
+            try:
+                win32gui.ShowWindow(acc["hwnd"], win32con.SW_MINIMIZE)
+            except Exception:
+                pass
+
+    def restore_all(self):
+        for acc in self.get_cycle_list():
+            try:
+                win32gui.ShowWindow(acc["hwnd"], win32con.SW_RESTORE)
+            except Exception:
+                pass
+
+    def save_layout(self, preset_name: str):
+        preset = []
+        for acc in self.get_cycle_list():
+            try:
+                rect = win32gui.GetWindowRect(acc["hwnd"])
+                x, y, x2, y2 = rect
+                preset.append({"name": acc["name"], "x": x, "y": y, "w": x2 - x, "h": y2 - y})
+            except Exception:
+                pass
+        self.config.data.setdefault("layout_presets", {})[preset_name] = preset
+        self.config.save()
+        return preset
+
+    def restore_layout(self, preset_name: str):
+        preset = self.config.data.get("layout_presets", {}).get(preset_name)
+        if not preset:
+            return False
+        name_to_hwnd = {acc["name"]: acc["hwnd"] for acc in self.all_accounts}
+        for entry in preset:
+            hwnd = name_to_hwnd.get(entry["name"])
+            if hwnd:
+                try:
+                    if win32gui.IsIconic(hwnd):
+                        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                    win32gui.MoveWindow(hwnd, entry["x"], entry["y"], entry["w"], entry["h"], True)
+                except Exception:
+                    pass
+        return True
+
+    def apply_grid_layout(self, grid_name: str):
+        accounts = self.get_cycle_list()
+        if not accounts:
+            return
+        sw = ctypes.windll.user32.GetSystemMetrics(0)
+        sh = ctypes.windll.user32.GetSystemMetrics(1)
+        n = len(accounts)
+
+        if grid_name == "2x2":
+            cols, rows = 2, 2
+        elif grid_name == "1+3":
+            cols, rows = 2, 2
+        elif grid_name == "3+1":
+            cols, rows = 2, 2
+        else:
+            cols = max(1, round(n ** 0.5))
+            rows = (n + cols - 1) // cols
+
+        cell_w = sw // cols
+        cell_h = sh // rows
+
+        for i, acc in enumerate(accounts):
+            col = i % cols
+            row = i // cols
+            hwnd = acc["hwnd"]
+            try:
+                if win32gui.IsIconic(hwnd):
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.MoveWindow(hwnd, col * cell_w, row * cell_h, cell_w, cell_h, True)
+            except Exception:
+                pass
 
     def execute_advanced_bind(self, source, identifier):
         """ Gère le focus dynamique et retourne le nouvel index pour la boucle. """

@@ -71,8 +71,183 @@ class SettingsWindow(ctk.CTkToplevel):
         self.var_keyboard_layout = ctk.StringVar(value=self.app.config.data.get("keyboard_layout", "azerty_fr"))
         ctk.CTkOptionMenu(frame_keyboard, values=["azerty_fr", "qwerty_us"], variable=self.var_keyboard_layout, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
         
+        # --- Overlay bar ---
+        frame_overlay = ctk.CTkFrame(self.scroll_container)
+        frame_overlay.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_overlay, text=self.app.i18n.t("settings_overlay", "Barre overlay")).pack(side="left", padx=8, pady=8)
+        self.var_overlay = ctk.BooleanVar(value=self.app.config.data.get("overlay_enabled", True))
+        ctk.CTkSwitch(frame_overlay, text="", variable=self.var_overlay, command=self._save_overlay).pack(side="right", padx=8)
+
+        # --- Teams ---
+        lbl_teams = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_teams", "Équipes"), font=title_font)
+        lbl_teams.pack(pady=(15, 5))
+
+        frame_team_count = ctk.CTkFrame(self.scroll_container)
+        frame_team_count.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_team_count, text=self.app.i18n.t("settings_team_count", "Nombre d'équipes")).pack(side="left", padx=8, pady=8)
+        self.var_team_count = ctk.IntVar(value=self.app.config.data.get("team_count", 2))
+        ctk.CTkOptionMenu(frame_team_count, values=["2", "3", "4"],
+                          variable=ctk.StringVar(value=str(self.var_team_count.get())),
+                          command=self._on_team_count_change).pack(side="right", padx=8, pady=8)
+
+        frame_team_names = ctk.CTkFrame(self.scroll_container)
+        frame_team_names.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_team_names, text=self.app.i18n.t("settings_team_names", "Noms d'équipes")).pack(padx=8, pady=(8, 2))
+        self._team_name_entries = {}
+        team_names_cfg = self.app.config.data.get("team_names", {})
+        team_count = self.app.config.data.get("team_count", 2)
+        for i in range(1, team_count + 1):
+            key = f"Team {i}"
+            row = ctk.CTkFrame(frame_team_names, fg_color="transparent")
+            row.pack(fill="x", padx=8, pady=2)
+            ctk.CTkLabel(row, text=f"T{i}:", width=30).pack(side="left")
+            ent = ctk.CTkEntry(row, width=140)
+            ent.insert(0, team_names_cfg.get(key, key))
+            ent.pack(side="left", padx=4)
+            ent.bind("<FocusOut>", lambda e, k=key, en=ent: self._save_team_name(k, en))
+            ent.bind("<Return>", lambda e, k=key, en=ent: self._save_team_name(k, en))
+            self._team_name_entries[key] = ent
+
+        # --- Layout Manager ---
+        lbl_layout = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_layout", "Disposition des fenêtres"), font=title_font)
+        lbl_layout.pack(pady=(15, 5))
+
+        frame_layout = ctk.CTkFrame(self.scroll_container)
+        frame_layout.pack(fill="x", padx=10, pady=5)
+
+        frame_layout_btns = ctk.CTkFrame(frame_layout, fg_color="transparent")
+        frame_layout_btns.pack(fill="x", padx=8, pady=5)
+        ctk.CTkButton(frame_layout_btns, text=self.app.i18n.t("btn_save_layout", "Sauvegarder"), width=120,
+                      command=self._save_layout).pack(side="left", padx=4)
+        ctk.CTkButton(frame_layout_btns, text=self.app.i18n.t("btn_restore_layout", "Restaurer"), width=120,
+                      command=self._restore_layout).pack(side="left", padx=4)
+
+        frame_grid = ctk.CTkFrame(frame_layout, fg_color="transparent")
+        frame_grid.pack(fill="x", padx=8, pady=(0, 5))
+        ctk.CTkLabel(frame_grid, text=self.app.i18n.t("label_grid_preset", "Grille:")).pack(side="left", padx=4)
+        for grid_name in ["2x2", "1+3", "3+1"]:
+            ctk.CTkButton(frame_grid, text=grid_name, width=55, height=26,
+                          fg_color="#34495e", hover_color="#2c3e50",
+                          command=lambda g=grid_name: self._apply_grid(g)).pack(side="left", padx=2)
+
+        # --- Export / Import ---
+        lbl_export = ctk.CTkLabel(self.scroll_container, text=self.app.i18n.t("settings_export", "Sauvegarde Configuration"), font=title_font)
+        lbl_export.pack(pady=(15, 5))
+
+        frame_export = ctk.CTkFrame(self.scroll_container)
+        frame_export.pack(fill="x", padx=10, pady=5)
+        frame_export_btns = ctk.CTkFrame(frame_export, fg_color="transparent")
+        frame_export_btns.pack(pady=8)
+        ctk.CTkButton(frame_export_btns, text=self.app.i18n.t("btn_export", "📤 Exporter"), width=120,
+                      command=self._export_config).pack(side="left", padx=8)
+        ctk.CTkButton(frame_export_btns, text=self.app.i18n.t("btn_import", "📥 Importer"), width=120,
+                      fg_color="#27ae60", hover_color="#2ecc71",
+                      command=self._import_config).pack(side="left", padx=8)
+
         self.btn_close = ctk.CTkButton(self.scroll_container, text=self.app.i18n.t("settings_close", "Fermer"), fg_color="#7f8c8d", command=self.destroy)
         self.btn_close.pack(pady=(20, 10))
+
+    def _save_overlay(self):
+        self.app.config.data["overlay_enabled"] = self.var_overlay.get()
+        self.app.config.save()
+
+    def _on_team_count_change(self, val):
+        self.app.config.data["team_count"] = int(val)
+        self.app.config.save()
+        # Rebuild the main mode combo
+        team_count = int(val)
+        team_values = ["ALL"] + [f"Team {i+1}" for i in range(team_count)]
+        self.parent.combo_mode.configure(values=team_values)
+
+    def _save_team_name(self, key, entry_widget):
+        val = entry_widget.get().strip() or key
+        self.app.config.data.setdefault("team_names", {})[key] = val
+        self.app.config.save()
+
+    def _save_layout(self):
+        import tkinter.simpledialog as sd
+        name = sd.askstring(
+            self.app.i18n.t("dialog_layout_name_title", "Nom de la disposition"),
+            self.app.i18n.t("dialog_layout_name_prompt", "Entrez un nom pour cette disposition :"),
+            parent=self,
+        )
+        if name:
+            self.app.logic.save_layout(name.strip())
+            self.parent.show_temporary_message(
+                self.app.i18n.t("msg_layout_saved", "✅ Disposition '{n}' sauvegardée !").format(n=name), "#2ecc71"
+            )
+
+    def _restore_layout(self):
+        presets = self.app.config.data.get("layout_presets", {})
+        if not presets:
+            messagebox.showinfo(
+                self.app.i18n.t("dialog_no_layout_title", "Aucune disposition"),
+                self.app.i18n.t("dialog_no_layout_text", "Aucune disposition sauvegardée."),
+                parent=self,
+            )
+            return
+        import tkinter.simpledialog as sd
+        names = list(presets.keys())
+        name = sd.askstring(
+            self.app.i18n.t("dialog_restore_layout_title", "Restaurer disposition"),
+            self.app.i18n.t("dialog_restore_layout_prompt", "Dispositions disponibles: {list}\n\nNom à restaurer:").format(list=", ".join(names)),
+            parent=self,
+        )
+        if name and name.strip() in presets:
+            ok = self.app.logic.restore_layout(name.strip())
+            if ok:
+                self.parent.show_temporary_message(
+                    self.app.i18n.t("msg_layout_restored", "✅ Disposition '{n}' restaurée !").format(n=name), "#2ecc71"
+                )
+
+    def _apply_grid(self, grid_name):
+        self.app.logic.apply_grid_layout(grid_name)
+        self.parent.show_temporary_message(
+            self.app.i18n.t("msg_grid_applied", "✅ Grille {g} appliquée !").format(g=grid_name), "#2ecc71"
+        )
+
+    def _export_config(self):
+        import json
+        from tkinter import filedialog
+        path = filedialog.asksaveasfilename(
+            parent=self,
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json")],
+            initialfile="dosoft_config.json",
+            title=self.app.i18n.t("dialog_export_title", "Exporter la configuration"),
+        )
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    import json
+                    json.dump(self.app.config.data, f, indent=4, ensure_ascii=False)
+                self.parent.show_temporary_message(
+                    self.app.i18n.t("msg_export_ok", "✅ Configuration exportée !"), "#2ecc71"
+                )
+            except Exception as e:
+                messagebox.showerror("Export", str(e), parent=self)
+
+    def _import_config(self):
+        import json
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            parent=self,
+            filetypes=[("JSON", "*.json")],
+            title=self.app.i18n.t("dialog_import_title", "Importer la configuration"),
+        )
+        if path:
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                self.app.config.data.update(loaded)
+                self.app.config.save()
+                self.app.setup_hotkeys()
+                self.app.refresh()
+                self.parent.show_temporary_message(
+                    self.app.i18n.t("msg_import_ok", "✅ Configuration importée !"), "#2ecc71"
+                )
+            except Exception as e:
+                messagebox.showerror("Import", str(e), parent=self)
 
     def save_settings(self):
         previous_language = self.app.config.data.get("language", "fr")
@@ -165,7 +340,9 @@ class OrganizerGUI:
         self.lbl_controls = ctk.CTkLabel(self.frame_mode, text=self.app.i18n.t("label_controls", "Contrôler :"))
         self.lbl_controls.pack(side="left", padx=10, pady=5)
         
-        self.combo_mode = ctk.CTkOptionMenu(self.frame_mode, values=["ALL", "Team 1", "Team 2"], command=self.on_mode_change)
+        team_count = cfg.get("team_count", 2)
+        team_values = ["ALL"] + [f"Team {i+1}" for i in range(team_count)]
+        self.combo_mode = ctk.CTkOptionMenu(self.frame_mode, values=team_values, command=self.on_mode_change)
         self.combo_mode.set(cfg.get("current_mode", "ALL"))
         self.combo_mode.pack(side="left", padx=5, pady=5)
 
@@ -195,6 +372,48 @@ class OrganizerGUI:
         self.create_hotkey_row(self.frame_keys, "hotkey_toggle_ui", "toggle_app_key", 2, 3, "tooltip_toggle_ui")
         self.create_hotkey_row(self.frame_keys, "hotkey_refresh", "refresh_key", 1, 6, "tooltip_refresh")
         self.create_hotkey_row(self.frame_keys, "hotkey_quit", "quit_key", 2, 6, "tooltip_quit")
+        self.create_hotkey_row(self.frame_keys, "hotkey_back", "back_key", 3, 0, "tooltip_back")
+
+        # --- Broadcast mode row ---
+        frame_broadcast = ctk.CTkFrame(self.root)
+        frame_broadcast.pack(fill="x", padx=15, pady=(0, 5))
+
+        lbl_bc = ctk.CTkLabel(frame_broadcast, text=self.app.i18n.t("label_broadcast", "📡 Broadcast :"),
+                              font=ctk.CTkFont(weight="bold"))
+        lbl_bc.pack(side="left", padx=10, pady=5)
+
+        self.var_broadcast = ctk.BooleanVar(value=self.app.config.data.get("broadcast_mode", False))
+        self.sw_broadcast = ctk.CTkSwitch(
+            frame_broadcast, text="", variable=self.var_broadcast,
+            onvalue=True, offvalue=False,
+            progress_color="#e67e22",
+            command=self._on_broadcast_toggle,
+        )
+        self.sw_broadcast.pack(side="left", padx=5)
+
+        self.lbl_bc_warn = ctk.CTkLabel(
+            frame_broadcast,
+            text=self.app.i18n.t("label_broadcast_warn", "⚠️ Risque CGU — désactivé par défaut"),
+            font=ctk.CTkFont(size=10),
+            text_color="#e67e22",
+        )
+        self.lbl_bc_warn.pack(side="left", padx=5)
+
+        # Broadcast VK key picker (shows when enabled)
+        self.frame_bc_key = ctk.CTkFrame(frame_broadcast, fg_color="transparent")
+        self.frame_bc_key.pack(side="left", padx=10)
+        ctk.CTkLabel(self.frame_bc_key, text=self.app.i18n.t("label_broadcast_key", "Touche:"), font=ctk.CTkFont(size=11)).pack(side="left")
+        bc_key_val = self.app.config.data.get("broadcast_key", "")
+        self.btn_bc_key = ctk.CTkButton(
+            self.frame_bc_key,
+            text=bc_key_val if bc_key_val else self.app.i18n.t("none", "Aucun"),
+            width=80,
+            command=lambda: self.catch_key("broadcast_key", self.btn_bc_key, allow_mouse=False),
+        )
+        self.btn_bc_key.pack(side="left", padx=4)
+        self.hotkey_btns["broadcast_key"] = self.btn_bc_key
+        if not self.var_broadcast.get():
+            self.frame_bc_key.pack_forget()
 
         self.frame_actions = ctk.CTkFrame(self.root)
         self.frame_actions.pack(fill="x", padx=15, pady=5)
@@ -207,7 +426,13 @@ class OrganizerGUI:
         
         self.btn_close_all = ctk.CTkButton(self.frame_actions, text=self.app.i18n.t("btn_close_team", "Fermer Team"), fg_color="#c0392b", hover_color="#e74c3c", command=self.close_all_and_refresh, width=120)
         self.btn_close_all.pack(side="right", padx=10)
-        
+
+        self.btn_restore_all = ctk.CTkButton(self.frame_actions, text=self.app.i18n.t("btn_restore_all", "▲ Restaurer"), fg_color="#27ae60", hover_color="#2ecc71", command=lambda: self.app.logic.restore_all(), width=100)
+        self.btn_restore_all.pack(side="right", padx=5)
+
+        self.btn_minimize_all = ctk.CTkButton(self.frame_actions, text=self.app.i18n.t("btn_minimize_all", "▼ Minimiser"), fg_color="#34495e", hover_color="#2c3e50", command=lambda: self.app.logic.minimize_all(), width=100)
+        self.btn_minimize_all.pack(side="right", padx=5)
+
         self.btn_reset = ctk.CTkButton(self.frame_actions, text=self.app.i18n.t("btn_reset_settings", "Reset Settings"), fg_color="#7f8c8d", hover_color="#95a5a6", command=self.reset_all, width=120)
         self.btn_reset.pack(side="right", padx=10)
 
@@ -321,11 +546,21 @@ class OrganizerGUI:
         self.show_temporary_message(self.app.i18n.t("msg_sorted", "🚀 Les pages ont été rangées avec succès !"), "#9b59b6")
 
     def close_and_refresh(self, name):
+        if not messagebox.askyesno(
+            self.app.i18n.t("dialog_confirm_title", "Confirmation"),
+            self.app.i18n.t("dialog_close_account", "Fermer le compte {name} ?").format(name=name),
+        ):
+            return
         self.app.logic.close_account_window(name)
-        time.sleep(0.5) 
+        time.sleep(0.5)
         self.original_app_refresh()
-        
+
     def close_all_and_refresh(self):
+        if not messagebox.askyesno(
+            self.app.i18n.t("dialog_confirm_title", "Confirmation"),
+            self.app.i18n.t("dialog_close_team", "Fermer tous les comptes actifs ?"),
+        ):
+            return
         self.app.logic.close_all_active_accounts()
         time.sleep(0.5)
         self.original_app_refresh()
@@ -363,81 +598,164 @@ class OrganizerGUI:
         self.tooltip_i18n_map[widget] = (key, default_text)
         self.bind_tooltip(widget, self.app.i18n.t(key, default_text))
 
+    _TEAM_COLORS = ["#2980b9", "#c0392b", "#27ae60", "#8e44ad"]
+
+    def _team_display(self, team_key):
+        names = self.app.config.data.get("team_names", {})
+        label = names.get(team_key, team_key)
+        idx = int(team_key.split()[-1]) - 1 if team_key.startswith("Team ") else 0
+        short = f"T{idx + 1}"
+        color = self._TEAM_COLORS[idx % len(self._TEAM_COLORS)]
+        return short, label, color
+
     def toggle_team_ui(self, name, btn):
+        team_count = self.app.config.data.get("team_count", 2)
         current_team = self.app.config.data.get("accounts_team", {}).get(name, "Team 1")
-        new_team = "Team 2" if current_team == "Team 1" else "Team 1"
+        try:
+            current_n = int(current_team.split()[-1])
+        except (ValueError, IndexError):
+            current_n = 1
+        next_n = (current_n % team_count) + 1
+        new_team = f"Team {next_n}"
         self.app.logic.change_team(name, new_team)
-        team_color = "#2980b9" if new_team == "Team 1" else "#c0392b"
-        btn.configure(text="T1" if new_team == "Team 1" else "T2", fg_color=team_color)
+        short, _, color = self._team_display(new_team)
+        btn.configure(text=short, fg_color=color)
+
+    def _afk_text(self, name):
+        ts = self.app.last_focused.get(name)
+        if ts is None:
+            return ""
+        elapsed = int((time.time() - ts) / 60)
+        if elapsed < 1:
+            return "< 1m"
+        return f"{elapsed}m"
 
     def refresh_list(self, accounts):
         for widget in self.scroll_frame.winfo_children(): widget.destroy()
         leader_name = self.app.config.data.get("leader_name", "")
-        
+
         is_retro = self.app.config.data.get("game_version", "Unity") == "Rétro"
         retro_classes = ["Inconnu", "Feca", "Osamodas", "Enutrof", "Sram", "Xelor", "Ecaflip", "Eniripsa", "Iop", "Cra", "Sadida", "Sacrieur", "Pandawa"]
-        
+
         for idx, acc in enumerate(accounts):
+            name = acc['name']
             row_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
             row_frame.pack(fill="x", pady=2)
-            
+
             img = self.get_class_image(acc.get('classe', 'Inconnu'), is_retro)
             if img: ctk.CTkLabel(row_frame, image=img, text="").pack(side="left", padx=5)
-            else: ctk.CTkLabel(row_frame, text="👤").pack(side="left", padx=5) 
-            
+            else: ctk.CTkLabel(row_frame, text="👤").pack(side="left", padx=5)
+
             var = tk.BooleanVar(value=acc['active'])
-            
-            chk_width = 110 if is_retro else 160
-            chk = ctk.CTkCheckBox(row_frame, text=acc['name'][:15], variable=var, width=chk_width, command=lambda n=acc['name'], v=var: self.app.logic.toggle_account(n, v.get()))
-            chk.pack(side="left", padx=(5, 0))
+
+            # Name + optional sublabel in a small column
+            name_col = ctk.CTkFrame(row_frame, fg_color="transparent")
+            name_col.pack(side="left", padx=(5, 0))
+
+            chk_width = 110 if is_retro else 150
+            chk = ctk.CTkCheckBox(name_col, text=name[:15], variable=var, width=chk_width,
+                                  command=lambda n=name, v=var: self.app.logic.toggle_account(n, v.get()))
+            chk.pack(anchor="w")
+
+            # Custom label subtitle (click to edit)
+            user_label = self.app.config.data.get("account_labels", {}).get(name, "")
+            lbl_sub = ctk.CTkLabel(name_col, text=user_label if user_label else "", font=ctk.CTkFont(size=9),
+                                   text_color="#95a5a6", width=chk_width, anchor="w")
+            lbl_sub.pack(anchor="w")
+            lbl_sub.bind("<Button-1>", lambda e, n=name, l=lbl_sub: self._edit_account_label(n, l))
+
+            # AFK timer label (right side of name col)
+            afk_lbl = ctk.CTkLabel(name_col, text=self._afk_text(name),
+                                   font=ctk.CTkFont(size=9), text_color="#7f8c8d", width=30, anchor="e")
+            afk_lbl.pack(anchor="e")
+            self._schedule_afk_refresh(afk_lbl, name)
 
             if is_retro:
                 combo_classe = ctk.CTkOptionMenu(
-                    row_frame, 
-                    values=retro_classes, 
+                    row_frame,
+                    values=retro_classes,
                     width=90, height=24,
                     fg_color="#34495e", button_color="#2c3e50", button_hover_color="#1a252f",
-                    command=lambda val, n=acc['name']: self.change_retro_class(n, val)
+                    command=lambda val, n=name: self.change_retro_class(n, val)
                 )
                 combo_classe.set(acc.get('classe', 'Inconnu'))
                 combo_classe.pack(side="left", padx=5)
 
             btn_close = ctk.CTkButton(row_frame, text="✖", width=25, fg_color="#c0392b", hover_color="#e74c3c")
-            btn_close.configure(command=lambda n=acc['name']: self.close_and_refresh(n))
+            btn_close.configure(command=lambda n=name: self.close_and_refresh(n))
             btn_close.pack(side="right", padx=(2, 5))
             self.bind_i18n_tooltip(btn_close, "tooltip_close_game", "Fermer instantanément le jeu")
-            
-            is_leader = (acc['name'] == leader_name)
+
+            is_leader = (name == leader_name)
             leader_txt = "🌟" if is_leader else "☆"
             leader_color = "#f39c12" if is_leader else "transparent"
-            btn_lead = ctk.CTkButton(row_frame, text=leader_txt, width=35, fg_color=leader_color, border_width=1, command=lambda n=acc['name']: self.set_leader(n))
+            btn_lead = ctk.CTkButton(row_frame, text=leader_txt, width=35, fg_color=leader_color, border_width=1,
+                                     command=lambda n=name: self.set_leader(n))
             btn_lead.pack(side="right", padx=2)
             self.bind_i18n_tooltip(btn_lead, "tooltip_set_leader", "Définir comme Chef")
 
             team_val = acc.get('team', "Team 1")
-            team_color = "#2980b9" if team_val == "Team 1" else "#c0392b"
-            btn_team = ctk.CTkButton(row_frame, text="T1" if team_val == "Team 1" else "T2", width=35, fg_color=team_color)
-            btn_team.configure(command=lambda n=acc['name'], b=btn_team: self.toggle_team_ui(n, b))
+            short, _, color = self._team_display(team_val)
+            btn_team = ctk.CTkButton(row_frame, text=short, width=35, fg_color=color)
+            btn_team.configure(command=lambda n=name, b=btn_team: self.toggle_team_ui(n, b))
             btn_team.pack(side="right", padx=5)
-            self.bind_i18n_tooltip(btn_team, "tooltip_change_team", "Changer d'équipe (T1/T2)")
+            self.bind_i18n_tooltip(btn_team, "tooltip_change_team", "Changer d'équipe")
 
             btn_down = ctk.CTkButton(row_frame, text="▼", width=25, fg_color="#34495e", hover_color="#2c3e50")
-            btn_down.configure(command=lambda n=acc['name']: self.move_row(n, 1))
+            btn_down.configure(command=lambda n=name: self.move_row(n, 1))
             btn_down.pack(side="right", padx=(2, 10))
             self.bind_i18n_tooltip(btn_down, "tooltip_move_down", "Descendre dans l'initiative")
-            
+
             btn_up = ctk.CTkButton(row_frame, text="▲", width=25, fg_color="#34495e", hover_color="#2c3e50")
-            btn_up.configure(command=lambda n=acc['name']: self.move_row(n, -1))
+            btn_up.configure(command=lambda n=name: self.move_row(n, -1))
             btn_up.pack(side="right", padx=2)
             self.bind_i18n_tooltip(btn_up, "tooltip_move_up", "Monter dans l'initiative")
 
             pos_values = [str(i+1) for i in range(len(accounts))]
             current_pos = str(idx + 1)
-            combo_pos = ctk.CTkOptionMenu(row_frame, values=pos_values, width=50, height=24, fg_color="#34495e", button_color="#2c3e50", button_hover_color="#1a252f")
+            combo_pos = ctk.CTkOptionMenu(row_frame, values=pos_values, width=50, height=24,
+                                          fg_color="#34495e", button_color="#2c3e50", button_hover_color="#1a252f")
             combo_pos.set(current_pos)
-            combo_pos.configure(command=lambda val, n=acc['name']: self.change_position(n, val))
+            combo_pos.configure(command=lambda val, n=name: self.change_position(n, val))
             combo_pos.pack(side="right", padx=(2, 5))
             self.bind_i18n_tooltip(combo_pos, "tooltip_exact_position", "Choisir la position exacte")
+
+    def _schedule_afk_refresh(self, label_widget, name):
+        def _update():
+            try:
+                if label_widget.winfo_exists():
+                    label_widget.configure(text=self._afk_text(name))
+                    self.root.after(60000, _update)
+            except Exception:
+                pass
+        self.root.after(60000, _update)
+
+    def _edit_account_label(self, name, lbl_widget):
+        current = self.app.config.data.get("account_labels", {}).get(name, "")
+        entry = ctk.CTkEntry(lbl_widget.master, width=120, height=18, font=ctk.CTkFont(size=9))
+        entry.insert(0, current)
+        entry.place(in_=lbl_widget, relx=0, rely=0, anchor="nw")
+        entry.focus_set()
+
+        def save(event=None):
+            val = entry.get().strip()
+            self.app.config.data.setdefault("account_labels", {})[name] = val
+            self.app.config.save()
+            lbl_widget.configure(text=val)
+            entry.destroy()
+
+        entry.bind("<Return>", save)
+        entry.bind("<FocusOut>", save)
+
+    def _on_broadcast_toggle(self):
+        enabled = self.var_broadcast.get()
+        self.app.config.data["broadcast_mode"] = enabled
+        self.app.config.save()
+        self.app.setup_hotkeys()
+        if enabled:
+            self.frame_bc_key.pack(side="left", padx=10)
+        else:
+            self.frame_bc_key.pack_forget()
 
     def toggle_autofocus(self):
         self.app.config.data["auto_focus_retro"] = self.var_autofocus.get()
@@ -621,19 +939,20 @@ class OrganizerGUI:
             self.original_app_refresh()
 
     def hide_to_tray(self):
-        """ Cache la fenêtre quand on clique sur la croix, sans la détruire """
         self.root.withdraw()
         self.is_visible = False
+        if self.app.config.data.get("overlay_enabled", True):
+            self.app.overlay.show()
 
     def toggle_visibility(self):
-        """ Alterne entre l'affichage et la mise en veille dans la barre des tâches """
         if self.is_visible:
             self.hide_to_tray()
         else:
             self.root.deiconify()
             self.root.lift()
-            self.root.focus_force() # Force la fenêtre à passer par-dessus les autres !
+            self.root.focus_force()
             self.is_visible = True
+            self.app.overlay.hide()
 
     def run(self): self.root.mainloop()
 

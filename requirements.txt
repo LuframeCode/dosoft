@@ -5,3 +5,4 @@ pystray
 pygame-ce
 Pillow
 requests
+winsdk

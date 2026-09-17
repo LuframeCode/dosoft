@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.2"
 
 
 def _candidate_paths(filename: str) -> list[str]:

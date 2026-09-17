@@ -1,7 +1,7 @@
-setup_dosoft.iss
 settings.json
-build_dosoft.cmd
-__pychache__
+__pycache__/
+*.py[cod]
 build
 dist
-main.spec
+Dosoft.spec
+installer_output

@@ -8,12 +8,20 @@
 #define AppExeName   "Dosoft.exe"
 #define SourceDir    "dist"
 #define VersionFile  "version.json"
-#define VersionRaw   FileRead(VersionFile)
-#define VersionKey   "\"version\": \""
+#define VersionFileHandle FileOpen(VersionFile)
+#if VersionFileHandle != 0
+  #define VersionIgnoredLine FileRead(VersionFileHandle)
+  #define VersionRaw FileRead(VersionFileHandle)
+  #call FileClose(VersionFileHandle)
+#else
+  #define VersionRaw ""
+#endif
+
+#define VersionKey   '"version": "'
 #define VersionStart Pos(VersionKey, VersionRaw)
 #if VersionStart > 0
   #define VersionTail Copy(VersionRaw, VersionStart + Len(VersionKey), 255)
-  #define AppVersion Copy(VersionTail, 1, Pos("\"", VersionTail) - 1)
+  #define AppVersion Copy(VersionTail, 1, Pos('"', VersionTail) - 1)
 #else
   #define AppVersion "0.0.0"
 #endif
@@ -135,7 +143,7 @@ begin
   if (CurStep = ssInstall) then begin
     // 1. Sauvegarde du settings.json de l'ancienne version
     if FileExists(SettingsPath) then begin
-      FileCopy(SettingsPath, BackupPath, False);
+      CopyFile(SettingsPath, BackupPath, False);
     end;
 
     // Désinstallation silencieuse
@@ -146,7 +154,7 @@ begin
   if (CurStep = ssPostInstall) then begin
     // 2. Restauration du settings.json
     if FileExists(BackupPath) then begin
-      FileCopy(BackupPath, SettingsPath, False);
+      CopyFile(BackupPath, SettingsPath, False);
     end;
 
     // Exclusion Windows Defender

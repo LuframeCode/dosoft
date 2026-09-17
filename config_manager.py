@@ -32,6 +32,7 @@ class Config:
             "cycle_row_binds": ["ctrl+F1", "ctrl+F2", "ctrl+F3", "ctrl+F4", "ctrl+F5", "ctrl+F6", "ctrl+F7", "ctrl+F8"],
             "keyboard_layout": "azerty_fr",
             "language": "fr",
+            "notif_api_mode": "v2",
         }
         self.load()
 

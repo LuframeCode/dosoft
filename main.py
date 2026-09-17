@@ -622,8 +622,26 @@ class OrganizerApp:
             await asyncio.sleep(3)
                 
 
-CURRENT_VERSION = "1.2.2" 
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
+
+
+def is_newer_version(candidate, current):
+    """Return whether a dotted numeric candidate version is newer than current."""
+    def parse(value):
+        parts = str(value).split(".")
+        if not parts or any(not part.isdigit() for part in parts):
+            return None
+        return tuple(int(part) for part in parts)
+
+    candidate_parts = parse(candidate)
+    current_parts = parse(current)
+    if candidate_parts is None or current_parts is None:
+        return False
+    length = max(len(candidate_parts), len(current_parts))
+    candidate_parts += (0,) * (length - len(candidate_parts))
+    current_parts += (0,) * (length - len(current_parts))
+    return candidate_parts > current_parts
+
 
 def check_version(i18n=None):
     i18n = i18n or I18nManager("fr")
@@ -633,7 +651,7 @@ def check_version(i18n=None):
         data = response.json()
         latest_version = data.get("version")
 
-        if latest_version and latest_version != CURRENT_VERSION:
+        if latest_version and is_newer_version(latest_version, CURRENT_VERSION):
             message = i18n.t(
                 "version_update_required_text",
                 "Une mise à jour est requise pour utiliser le logiciel.\n\nVotre version : {current_version}\nVersion disponible : {latest_version}\n\nMise à jour dispo sur Dosoft.fr"

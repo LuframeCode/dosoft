@@ -1,5 +1,6 @@
 settings.json
-__pychache__
+__pycache__/
+*.py[cod]
 build
 dist
 Dosoft.spec

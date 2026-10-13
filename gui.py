@@ -62,7 +62,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.lbl_language = ctk.CTkLabel(frame_language, text=self.app.i18n.t("settings_language", "Langue"))
         self.lbl_language.pack(side="left", padx=8, pady=8)
         self.var_language = ctk.StringVar(value=self.app.config.data.get("language", "fr"))
-        ctk.CTkOptionMenu(frame_language, values=["fr", "en", "pt"], variable=self.var_language, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
+        ctk.CTkOptionMenu(frame_language, values=["fr", "en", "pt", "es"], variable=self.var_language, command=lambda _: self.save_settings()).pack(side="right", padx=8, pady=8)
 
         frame_keyboard = ctk.CTkFrame(self.scroll_container)
         frame_keyboard.pack(fill="x", padx=10, pady=5)
@@ -75,7 +75,7 @@ class SettingsWindow(ctk.CTkToplevel):
         frame_debug = ctk.CTkFrame(self.scroll_container)
         frame_debug.pack(fill="x", padx=10, pady=5)
         
-        self.lbl_debug = ctk.CTkLabel(frame_debug, text="Moteur Auto-Focus (Si bug)")
+        self.lbl_debug = ctk.CTkLabel(frame_debug, text=self.app.i18n.t("settings_api_mode", "Moteur Auto-Focus (Si bug)"))
         self.lbl_debug.pack(side="left", padx=8, pady=8)
         
         # On définit v2 par défaut
@@ -115,8 +115,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self.app.config.save()
         
         rep = messagebox.askyesno(
-            "Redémarrage requis", 
-            "Pour appliquer le changement de moteur d'Autofocus, DOSOFT doit être redémarré", 
+            self.app.i18n.t("restart_required_title", "Redémarrage requis"),
+            self.app.i18n.t("restart_api_text", "Pour appliquer le changement de moteur d'Autofocus, DOSOFT doit être redémarré"),
             parent=self
         )
         if rep:
@@ -132,6 +132,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.lbl_hk.configure(text=self.app.i18n.t("settings_hotkey", "Raccourci :"))
         self.lbl_language.configure(text=self.app.i18n.t("settings_language", "Langue"))
         self.lbl_keyboard.configure(text=self.app.i18n.t("settings_keyboard_layout", "Disposition clavier"))
+        self.lbl_debug.configure(text=self.app.i18n.t("settings_api_mode", "Moteur Auto-Focus (Si bug)"))
         self.btn_close.configure(text=self.app.i18n.t("settings_close", "Fermer"))
 
 

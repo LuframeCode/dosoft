@@ -33,6 +33,9 @@ Vous pouvez tout build via "build.cmd" et inno setup en utilisant setup.iss pour
 ## Releases
 Les versions précompilées (fichiers .exe) sont disponibles dans la section "Releases" du dépôt. Téléchargez la release souhaitée si vous ne voulez pas compiler vous‑même.
 
+Les changements de la bêta 1.3.9 sont détaillés dans les
+[notes de mise à jour](docs/releases/1.3.9-beta.md).
+
 ## Notice utilisateur
 
 La notice complète de DOSOFT 1.3.8 bêta, présentée sous forme d'interview et

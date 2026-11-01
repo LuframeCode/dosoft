@@ -1203,11 +1203,15 @@ class SettingsWindow(ctk.CTkToplevel):
         self.lbl_dofus_display_status.configure(text=progress)
 
         def worker():
+            self.app.dofus_settings._record(f"ACTION_START {action.__name__}")
             try:
                 self._dofus_display_results.put((True, success(action())))
+                self.app.dofus_settings._record("ACTION_OK")
             except DofusSettingsError as error:
+                self.app.dofus_settings._record(f"ACTION_ERROR {error}")
                 self._dofus_display_results.put((False, str(error)))
             except Exception as error:
+                self.app.dofus_settings._record(f"ACTION_ERROR {type(error).__name__}: {error}")
                 self._dofus_display_results.put(
                     (False, ui_text(
                         self.app, "dofus_display_unexpected_error",
@@ -1264,6 +1268,7 @@ class SettingsWindow(ctk.CTkToplevel):
                     "Profil JEU CLASSIQUE enregistré. Interface normale : {normal} · Combat : {fight} · {shared} réglage(s) global(aux) et {account} réglage(s) de compte.",
                     normal=result["normal"], fight=result["fight"], shared=result["shared"], account=result["account"],
                 )
+                + ("\n\n" + "\n".join(result.get("warnings", [])) if result.get("warnings") else "")
             ),
         )
 
@@ -1290,7 +1295,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self._run_dofus_display_action(
             ui_text(self.app, "dofus_display_backup_progress", "Création d'une sauvegarde locale vérifiée…"),
             lambda: self.app.dofus_settings.create_backup("manuel"),
-            lambda path: ui_text(self.app, "dofus_display_backup_success", "Sauvegarde créée et vérifiée : {name}", name=path.name),
+            lambda path: ui_text(self.app, "dofus_display_backup_success", "Sauvegarde créée et vérifiée : {name}", name=path.name)
+            + ("\n\n" + self.app.dofus_settings.backup_warning(path) if self.app.dofus_settings.backup_warning(path) else ""),
         )
 
     def restore_dofus_display(self):

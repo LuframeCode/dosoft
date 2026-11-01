@@ -1,4 +1,7 @@
 {
+  "dofus_display_shared_empty": "O arquivo global do Dofus está vazio ou ausente. As interfaces das contas foram salvas; as configurações globais do perfil anterior são mantidas quando disponíveis.",
+  "dofus_display_quarantine_warning": "{count} arquivo(s) vazio(s) ou inválido(s) preservado(s) separadamente no arquivo compactado; eles não serão restaurados. Detalhes: dofus-display-debug.log.",
+  "dofus_error_rollback_failed": "A gravação foi interrompida. A recuperação automática está incompleta. Seus arquivos originais estão preservados em: {path}",
   "app_title": "DOSOFT v1.2.0",
   "settings_title": "⚙️ Configurações",
   "settings_close": "Fechar",

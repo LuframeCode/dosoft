@@ -1,4 +1,7 @@
 {
+  "dofus_display_shared_empty": "The global Dofus file is empty or missing. Account layouts have been saved; global settings from the previous profile are retained when available.",
+  "dofus_display_quarantine_warning": "{count} empty or invalid file(s) preserved separately in the archive; they will not be restored. Details: dofus-display-debug.log.",
+  "dofus_error_rollback_failed": "Writing was interrupted. Automatic recovery is incomplete. Your original files are preserved in: {path}",
   "app_title": "DOSOFT v1.2.0",
   "settings_title": "⚙️ Settings",
   "settings_close": "Close",

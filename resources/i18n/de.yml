@@ -1,4 +1,7 @@
 {
+  "dofus_display_shared_empty": "Die globale Dofus-Datei ist leer oder fehlt. Die Kontolayouts wurden gespeichert; globale Einstellungen des vorherigen Profils bleiben erhalten, sofern vorhanden.",
+  "dofus_display_quarantine_warning": "{count} leere oder ungültige Datei(en) separat im Archiv gesichert; sie werden nicht wiederhergestellt. Details: dofus-display-debug.log.",
+  "dofus_error_rollback_failed": "Der Schreibvorgang wurde unterbrochen. Die automatische Wiederherstellung ist unvollständig. Ihre Originaldateien sind hier gesichert: {path}",
   "app_title": "DOSOFT",
   "settings_title": "⚙️ Einstellungen", "settings_close": "Schließen", "settings_radial": "Fokus-Rad (radial)", "settings_radial_enable": "Rad aktivieren", "settings_hotkey": "Tastenkürzel:", "settings_language": "Sprache", "settings_keyboard_layout": "Tastaturlayout", "none": "Keine",
   "header_settings": "⚙️ Einstellungen", "header_tutorial": "🎓 Anleitung", "header_off": "🔴 AUS", "hotkey_quit": "Beenden",

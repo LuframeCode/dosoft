@@ -1,4 +1,7 @@
 {
+  "dofus_display_shared_empty": "Le fichier global Dofus est vide ou absent. Les interfaces des comptes sont enregistrées ; les réglages globaux du profil précédent sont conservés s'ils existent.",
+  "dofus_display_quarantine_warning": "{count} fichier(s) vide(s) ou invalide(s) conservé(s) à part dans l'archive ; ils ne seront pas restaurés. Détails : dofus-display-debug.log.",
+  "dofus_error_rollback_failed": "Écriture interrompue. La récupération automatique est incomplète. Vos fichiers originaux sont conservés dans : {path}",
   "app_title": "DOSOFT v1.2.0",
   "settings_title": "⚙️ Paramètres",
   "settings_close": "Fermer",

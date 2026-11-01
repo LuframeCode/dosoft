@@ -1,4 +1,7 @@
 {
+  "dofus_display_shared_empty": "El archivo global de Dofus está vacío o no existe. Se han guardado las interfaces de las cuentas; se conservan los ajustes globales del perfil anterior si existen.",
+  "dofus_display_quarantine_warning": "Se conservan por separado {count} archivo(s) vacío(s) o no válido(s) en el archivo comprimido; no se restaurarán. Detalles: dofus-display-debug.log.",
+  "dofus_error_rollback_failed": "Se interrumpió la escritura. La recuperación automática está incompleta. Los archivos originales se conservan en: {path}",
   "app_title": "DOSOFT",
   "settings_title": "⚙️ Ajustes", "settings_close": "Cerrar", "settings_radial": "Rueda de enfoque (radial)", "settings_radial_enable": "Activar la rueda", "settings_hotkey": "Atajo:", "settings_language": "Idioma", "settings_keyboard_layout": "Distribución del teclado", "none": "Ninguno",
   "header_settings": "⚙️ Ajustes", "header_tutorial": "🎓 Tutorial", "header_off": "🔴 OFF", "hotkey_quit": "Salir",

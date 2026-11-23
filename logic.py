@@ -1,8 +1,4 @@
-import win32gui
-import win32con
-import ctypes
-import win32process
-import time
+import platform_backend as pb
 
 class DofusLogic:
     def __init__(self, config):
@@ -12,22 +8,7 @@ class DofusLogic:
 
     def scan_slots(self):
         game_version = self.config.data.get("game_version", "Unity")
-        windows_trouvees = []
-
-        def enum_windows_callback(hwnd, extra):
-            if win32gui.IsWindowVisible(hwnd):
-                titre = win32gui.GetWindowText(hwnd)
-                if not titre.strip(): return True
-                
-                if game_version == "Unity":
-                    if win32gui.GetClassName(hwnd) == "UnityWndClass":
-                        windows_trouvees.append((hwnd, titre))
-                elif game_version == "Rétro":
-                    if "Dofus Retro" in titre:
-                        windows_trouvees.append((hwnd, titre))
-            return True
-
-        win32gui.EnumWindows(enum_windows_callback, None)
+        windows_trouvees = pb.list_game_windows(game_version)
 
         nouveaux_comptes = []
         menu_counter = 1 # Compteur pour différencier les fenêtres sans perso
@@ -158,50 +139,22 @@ class DofusLogic:
     def close_account_window(self, name):
         for acc in self.all_accounts:
             if acc['name'] == name:
-                hwnd = acc['hwnd']
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                try:
-                    handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
-                    ctypes.windll.kernel32.TerminateProcess(handle, 0)
-                    ctypes.windll.kernel32.CloseHandle(handle)
-                except Exception: pass
+                pb.terminate_window_process(acc['hwnd'])
                 break
 
     def close_all_active_accounts(self):
         active_accs = self.get_cycle_list()
         for acc in active_accs:
-            hwnd = acc['hwnd']
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            try:
-                handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
-                ctypes.windll.kernel32.TerminateProcess(handle, 0)
-                ctypes.windll.kernel32.CloseHandle(handle)
-            except: pass
+            try: pb.terminate_window_process(acc['hwnd'])
+            except Exception: pass
 
     def focus_window(self, hwnd):
-        if not hwnd: return
-        try:
-            if win32gui.IsIconic(hwnd): win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            tid, pid = win32process.GetWindowThreadProcessId(hwnd)
-            ctypes.windll.user32.AllowSetForegroundWindow(pid)
-            ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)
-            ctypes.windll.user32.keybd_event(0x12, 0, 2, 0)
-            win32gui.SetForegroundWindow(hwnd)
-        except: pass
+        pb.focus_window(hwnd)
 
     def sort_taskbar(self):
         active_accs = self.get_cycle_list()
         if not active_accs: return
-        try:
-            for acc in active_accs:
-                win32gui.ShowWindow(acc['hwnd'], win32con.SW_HIDE)
-            time.sleep(0.3)
-            for acc in active_accs:
-                win32gui.ShowWindow(acc['hwnd'], win32con.SW_SHOW)
-                time.sleep(0.1) 
-            if self.leader_hwnd:
-                self.focus_window(self.leader_hwnd)
-        except Exception: pass
+        pb.sort_windows([acc['hwnd'] for acc in active_accs], self.leader_hwnd)
 
     def execute_advanced_bind(self, source, identifier):
         """ Gère le focus dynamique et retourne le nouvel index pour la boucle. """

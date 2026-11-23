@@ -50,6 +50,10 @@ python -m PyInstaller ^
     --hidden-import=win32gui ^
     --hidden-import=win32process ^
     --hidden-import=keyboard ^
+    --hidden-import=platform_backend.windows ^
+    --exclude-module=platform_backend.macos ^
+    --exclude-module=platform_backend.mac_notifications ^
+    --exclude-module=platform_backend.mac_keycodes ^
     --collect-all=customtkinter ^
     "%MAIN_FILE%"
 

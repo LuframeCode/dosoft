@@ -3,7 +3,7 @@ import os
 import sys
 from typing import Dict, Optional
 
-import keyboard
+import platform_backend as pb
 
 
 class KeyboardLayoutManager:
@@ -56,7 +56,4 @@ class KeyboardLayoutManager:
         scan = self.key_to_scan(token)
         if scan is not None:
             return scan
-        try:
-            return keyboard.key_to_scan_codes(token)[0]
-        except Exception:
-            return None
+        return pb.name_to_scan(token)

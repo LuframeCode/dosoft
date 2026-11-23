@@ -1,9 +1,11 @@
 import json
 import os
 
+import platform_backend as pb
+
 class Config:
-    def __init__(self, filename="settings.json"):
-        self.filename = filename
+    def __init__(self, filename=None):
+        self.filename = filename or pb.default_settings_path()
         self.data = {
             "prev_key": "tab",
             "next_key": "²",

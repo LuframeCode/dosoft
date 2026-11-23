@@ -3,7 +3,7 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('skin', 'skin'), ('sounds', 'sounds'), ('resources\\\\i18n', 'resources\\\\i18n'), ('resources\\\\keyboards', 'resources\\\\keyboards'), ('logo.ico', '.'), ('version.json', '.')]
 binaries = []
-hiddenimports = ['customtkinter', 'PIL', 'pygame', 'win32api', 'win32con', 'win32gui', 'win32process', 'keyboard']
+hiddenimports = ['customtkinter', 'PIL', 'pygame', 'win32api', 'win32con', 'win32gui', 'win32process', 'keyboard', 'platform_backend.windows']
 tmp_ret = collect_all('customtkinter')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
@@ -17,7 +17,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['platform_backend.macos', 'platform_backend.mac_notifications', 'platform_backend.mac_keycodes'],
     noarchive=False,
     optimize=0,
 )

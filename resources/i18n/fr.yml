@@ -77,5 +77,13 @@
   "header_instace_off": "Instance détectée",
   "button_yes": "Oui",
   "button_no": "Non",
-  "popup_conflict_instance_text": "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"
+  "popup_conflict_instance_text": "Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?",
+  "btn_sort_windows_mac": "Trier les fenêtres",
+  "tray_sort_mac": "Trier les fenêtres",
+  "tooltip_sort_windows_mac": "Empile les fenêtres et le sélecteur Cmd+Tab dans l'ordre de l'initiative",
+  "popup_permissions_title": "🔐 Autorisation requise",
+  "popup_permissions_text": "DOSOFT a besoin de l'autorisation « Accessibilité » de macOS pour :\n• lire le nom des personnages (titres des fenêtres Dofus)\n• passer d'une fenêtre à l'autre\n• utiliser les raccourcis clavier / souris globaux\n\nRéglages Système → Confidentialité et sécurité → Accessibilité,\npuis cochez DOSOFT. Les raccourcis s'activent automatiquement.",
+  "btn_open_settings": "Ouvrir les Réglages",
+  "msg_permissions_ok": "✅ Autorisation accordée !",
+  "msg_media_key": "⚠️ Touche multimédia : maintenez fn (ex. fn + F2)"
 }

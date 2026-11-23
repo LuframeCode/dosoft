@@ -1,21 +1,65 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
-import keyboard
 import threading
+import queue
 import time
-import win32api
-import win32con
 import os
 import webbrowser
 from PIL import Image, ImageTk
 from i18n_manager import I18nManager
 from config_manager import Config
 from app_version import APP_TITLE
+import platform_backend as pb
+
+# Libellé du bouton « Trier » : barre des tâches sous Windows, fenêtres / Cmd+Tab sous macOS
+SORT_LABEL_KEY = "btn_sort_windows_mac" if pb.IS_MAC else "btn_sort_taskbar"
+SORT_LABEL_DEFAULT = "Trier les fenêtres" if pb.IS_MAC else "Trier Barre Windows"
+# Noms de touches renvoyés pour les modificateurs (ignorés lors de la capture d'une touche)
+MODIFIER_KEY_NAMES = ['alt', 'ctrl', 'shift', 'maj', 'right alt', 'right ctrl', 'left alt', 'left ctrl', 'left shift', 'right shift', 'alt gr', 'menu', 'windows', 'cmd', 'left windows', 'right windows']
+if pb.IS_MAC:
+    MODIFIER_KEY_NAMES += ['caps lock', 'fn']
+# Durée max d'attente d'une touche : le bouton ne reste jamais bloqué sur « ... »
+CAPTURE_TIMEOUT = 15
 
 
-ctk.set_appearance_mode("Dark")  
-ctk.set_default_color_theme("blue")  
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
+
+
+def install_thread_safe_after(root, interval_ms=10):
+    """Rend root.after() utilisable depuis n'importe quel thread.
+
+    Les écouteurs (raccourcis, roue radiale, notifications) planifient les mises
+    à jour de l'interface via root.after() depuis leurs threads. Avec Tcl/Tk 9
+    (Python récents, macOS), _tkinter ne redirige plus ces appels vers le thread
+    de Tk : le minuteur est créé dans le mauvais thread et ne se déclenche jamais.
+    Les appels hors thread principal passent donc par une file vidée par Tk.
+    """
+    main_thread = threading.get_ident()
+    pending = queue.SimpleQueue()
+    original_after = root.after
+
+    def after(ms, func=None, *args):
+        if func is None or threading.get_ident() == main_thread:
+            return original_after(ms, func, *args)
+        pending.put((ms, func, args))
+        return None
+
+    def pump():
+        while True:
+            try:
+                ms, func, args = pending.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                original_after(ms, func, *args)
+            except Exception:
+                pass
+        original_after(interval_ms, pump)
+
+    root.after = after
+    pump()
 
 class SettingsWindow(ctk.CTkToplevel):
     def __init__(self, parent_gui):
@@ -84,7 +128,7 @@ class SettingsWindow(ctk.CTkToplevel):
         # Le sélecteur avec les 3 versions
         combo_debug = ctk.CTkOptionMenu(
             frame_debug, 
-            values=["v1", "v2", "v3"], 
+            values=pb.NOTIF_ENGINES, 
             variable=self.var_notif_api, 
             command=self.on_notif_api_change
         )
@@ -140,6 +184,7 @@ class OrganizerGUI:
     def __init__(self, app_controller):
         self.app = app_controller
         self.root = ctk.CTk()
+        install_thread_safe_after(self.root)
         self.root.title(APP_TITLE)
         
         screen_w = self.root.winfo_screenwidth()
@@ -156,9 +201,7 @@ class OrganizerGUI:
 
         
 
-        if os.path.exists("logo.ico"):
-            try: self.root.iconbitmap("logo.ico")
-            except: pass
+        pb.set_window_icon(self.root, "logo.ico")
                 
         self.is_listening = False
         self.is_visible = True 
@@ -168,7 +211,7 @@ class OrganizerGUI:
         self.tooltip = tk.Toplevel(self.root)
         self.tooltip.overrideredirect(True)
         self.tooltip.attributes("-topmost", True)
-        self.tooltip_lbl = tk.Label(self.tooltip, text="", fg="#ecf0f1", bg="#2c3e50", font=("Segoe UI", 9), padx=6, pady=3, relief="solid", borderwidth=1)
+        self.tooltip_lbl = tk.Label(self.tooltip, text="", fg="#ecf0f1", bg="#2c3e50", font=(pb.UI_FONT, 9), padx=6, pady=3, relief="solid", borderwidth=1)
         self.tooltip_lbl.pack()
         self.tooltip.withdraw() 
         
@@ -271,8 +314,10 @@ class OrganizerGUI:
         self.btn_refresh = ctk.CTkButton(self.frame_footer, text=self.app.i18n.t("btn_refresh", "Rafraîchir"), command=self.original_app_refresh, width=80)
         self.btn_refresh.pack(side="left")
 
-        self.btn_sort_win = ctk.CTkButton(self.frame_footer, text=self.app.i18n.t("btn_sort_taskbar", "Trier Barre Windows"), fg_color="#8e44ad", hover_color="#9b59b6", command=self.trigger_sort_taskbar, width=120)
+        self.btn_sort_win = ctk.CTkButton(self.frame_footer, text=self.app.i18n.t(SORT_LABEL_KEY, SORT_LABEL_DEFAULT), fg_color="#8e44ad", hover_color="#9b59b6", command=self.trigger_sort_taskbar, width=120)
         self.btn_sort_win.pack(side="left", padx=5)
+        if pb.IS_MAC:
+            self.bind_i18n_tooltip(self.btn_sort_win, "tooltip_sort_windows_mac", "Empile les fenêtres et le sélecteur Cmd+Tab dans l'ordre de l'initiative")
         
         self.chk_tooltips = ctk.CTkCheckBox(self.frame_footer, text=self.app.i18n.t("label_tooltips", "Bulles"), variable=self.var_tooltips, command=self.toggle_tooltips_setting, width=60)
         self.chk_tooltips.pack(side="left", padx=15)
@@ -304,7 +349,7 @@ class OrganizerGUI:
         self.btn_reset.configure(text=self.app.i18n.t("btn_reset_settings", "Reset Settings"))
         self.lbl_accounts.configure(text=self.app.i18n.t("label_active_accounts", "Comptes actifs"))
         self.btn_refresh.configure(text=self.app.i18n.t("btn_refresh", "Rafraîchir"))
-        self.btn_sort_win.configure(text=self.app.i18n.t("btn_sort_taskbar", "Trier Barre Windows"))
+        self.btn_sort_win.configure(text=self.app.i18n.t(SORT_LABEL_KEY, SORT_LABEL_DEFAULT))
         self.chk_tooltips.configure(text=self.app.i18n.t("label_tooltips", "Bulles"))
         self.btn_hide.configure(text=self.app.i18n.t("btn_hide_ui", "Cacher l'UI"))
         self.chk_autofocus.configure(text=self.app.i18n.t("label_auto_focus", "Auto-Focus 🔔"))
@@ -385,13 +430,13 @@ class OrganizerGUI:
             if self.is_listening or not self.app.config.data.get("show_tooltips", True): return 
             self.tooltip_lbl.config(text=text)
             self.tooltip.deiconify()
-            x, y = win32api.GetCursorPos()
+            x, y = pb.get_cursor_pos()
             self.tooltip.geometry(f"+{x + 15}+{y + 15}")
         def on_leave(event):
             if not self.is_listening: self.tooltip.withdraw()
         def on_motion(event):
             if self.is_listening or not self.app.config.data.get("show_tooltips", True): return
-            x, y = win32api.GetCursorPos()
+            x, y = pb.get_cursor_pos()
             self.tooltip.geometry(f"+{x + 15}+{y + 15}")
 
         widget.bind("<Enter>", on_enter)
@@ -501,13 +546,23 @@ class OrganizerGUI:
         btn_x.grid(row=row, column=col_offset+2, padx=(0, 10))
         self.bind_i18n_tooltip(btn_x, "tooltip_clear_shortcut", "Effacer le raccourci")
 
+    def capture_blocked(self):
+        """macOS : sans l'autorisation Accessibilité aucune touche n'est reçue."""
+        if pb.permissions_supported() and not all(pb.check_permissions().values()):
+            self.app.show_permissions_popup()
+            return True
+        return False
+
+    def notify_media_key(self):
+        """Touche multimédia (luminosité, volume…) pressée pendant une capture."""
+        self.root.after(0, self.show_temporary_message, self.app.i18n.t(
+            "msg_media_key", "⚠️ Touche multimédia : maintenez fn (ex. fn + F2)"), "#f39c12")
+
     def catch_key(self, config_key, btn, allow_mouse=False):
         if self.is_listening: return
+        if self.capture_blocked(): return
         self.is_listening = True
-        mods_now = []
-        if win32api.GetAsyncKeyState(win32con.VK_CONTROL) < 0: mods_now.append("ctrl")
-        if win32api.GetAsyncKeyState(win32con.VK_MENU) < 0: mods_now.append("alt")
-        if win32api.GetAsyncKeyState(win32con.VK_SHIFT) < 0: mods_now.append("shift")
+        mods_now = pb.get_pressed_modifiers()
         btn.configure(text="...", fg_color="#f39c12")
         threading.Thread(target=self._listen_hotkey_thread, args=(config_key, btn, allow_mouse, mods_now), daemon=True).start()
 
@@ -517,13 +572,9 @@ class OrganizerGUI:
         captured_mods = []
 
         def get_current_mods():
-            mods = []
-            if win32api.GetAsyncKeyState(win32con.VK_CONTROL) < 0: mods.append("ctrl")
-            if win32api.GetAsyncKeyState(win32con.VK_MENU) < 0: mods.append("alt")
-            if win32api.GetAsyncKeyState(win32con.VK_SHIFT) < 0: mods.append("shift")
-            return mods
+            return pb.get_pressed_modifiers()
 
-        while win32api.GetAsyncKeyState(win32con.VK_LBUTTON) < 0 or win32api.GetAsyncKeyState(win32con.VK_RBUTTON) < 0 or win32api.GetAsyncKeyState(win32con.VK_MBUTTON) < 0:
+        while pb.is_mouse_pressed("left_click") or pb.is_mouse_pressed("right_click") or pb.is_mouse_pressed("middle_click"):
             time.sleep(0.01)
         time.sleep(0.1)
 
@@ -532,57 +583,74 @@ class OrganizerGUI:
             done_event = _threading.Event()
             def on_key_hook(e):
                 nonlocal captured_key, captured_mods
-                if e.event_type == keyboard.KEY_DOWN:
-                    if e.name not in ['alt', 'ctrl', 'shift', 'maj', 'right alt', 'right ctrl', 'left alt', 'left ctrl', 'left shift', 'right shift', 'alt gr', 'menu', 'windows', 'cmd', 'left windows', 'right windows']:
+                if e.name.startswith(pb.MEDIA_KEY_PREFIX):
+                    if e.event_type == pb.KEY_DOWN: self.notify_media_key()
+                    return
+                if e.event_type == pb.KEY_DOWN:
+                    if e.name not in MODIFIER_KEY_NAMES:
                         current_mods = get_current_mods()
                         combined = list(set(mods_before_click + current_mods))
-                        captured_mods = [m for m in ['ctrl', 'alt', 'shift'] if m in combined]
+                        captured_mods = [m for m in pb.MODIFIERS if m in combined]
                         mapped_key = self.app.keymaps.scan_to_key_name(e.scan_code)
                         if mapped_key:
                             captured_key = mapped_key
                         else:
                             captured_key = e.name
                         done_event.set()
-            hook = keyboard.hook(on_key_hook, suppress=True)
-            done_event.wait()
-            keyboard.unhook(hook)
+            hook = pb.hook(on_key_hook, suppress=True)
+            if not done_event.wait(CAPTURE_TIMEOUT):
+                captured_key = "esc"  # délai dépassé : on garde l'ancienne touche
+            pb.unhook(hook)
         else:
             held_mods = set(mods_before_click)
             MOD_NAMES = {'alt', 'ctrl', 'shift', 'maj', 'right alt', 'right ctrl', 'left alt', 'left ctrl', 'menu'}
             MOD_MAP = {'alt': 'alt', 'left alt': 'alt', 'right alt': 'alt', 'menu': 'alt',
                        'ctrl': 'ctrl', 'left ctrl': 'ctrl', 'right ctrl': 'ctrl',
                        'shift': 'shift', 'maj': 'shift'}
+            if pb.IS_MAC:
+                MOD_NAMES |= {'cmd', 'caps lock', 'fn'}
+                MOD_MAP['cmd'] = 'cmd'
+                MOD_MAP['caps lock'] = None
+                MOD_MAP['fn'] = None
 
             def on_key(e):
                 nonlocal captured_key, captured_mods
+                if e.name.startswith(pb.MEDIA_KEY_PREFIX):
+                    if e.event_type == pb.KEY_DOWN: self.notify_media_key()
+                    return
                 if e.name in MOD_MAP:
-                    if e.event_type == keyboard.KEY_DOWN:
+                    if MOD_MAP[e.name] is None:
+                        return
+                    if e.event_type == pb.KEY_DOWN:
                         held_mods.add(MOD_MAP[e.name])
-                    elif e.event_type == keyboard.KEY_UP:
+                    elif e.event_type == pb.KEY_UP:
                         held_mods.discard(MOD_MAP[e.name])
                     return
-                if e.event_type == keyboard.KEY_DOWN:
+                if e.event_type == pb.KEY_DOWN:
                     if e.name not in MOD_NAMES:
-                        captured_mods = [m for m in ['ctrl', 'alt', 'shift'] if m in held_mods]
+                        captured_mods = [m for m in pb.MODIFIERS if m in held_mods]
                         mapped_key = self.app.keymaps.scan_to_key_name(e.scan_code)
                         if mapped_key:
                             captured_key = mapped_key
                         else: captured_key = e.name
-            hook = keyboard.hook(on_key, suppress=True)
+            hook = pb.hook(on_key, suppress=True)
+            deadline = time.monotonic() + CAPTURE_TIMEOUT
 
             while not captured_key:
-                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) < 0: captured_key = "left_click"
-                elif win32api.GetAsyncKeyState(win32con.VK_RBUTTON) < 0: captured_key = "right_click"
-                elif win32api.GetAsyncKeyState(win32con.VK_MBUTTON) < 0: captured_key = "middle_click"
-                elif win32api.GetAsyncKeyState(0x05) < 0: captured_key = "mouse4"
-                elif win32api.GetAsyncKeyState(0x06) < 0: captured_key = "mouse5"
+                if time.monotonic() > deadline:
+                    captured_key, captured_mods = "esc", []  # délai dépassé : on garde l'ancienne touche
+                    break
+                for button in pb.MOUSE_BUTTONS:
+                    if pb.is_mouse_pressed(button):
+                        captured_key = button
+                        break
 
                 if captured_key:
-                    captured_mods = [m for m in ['ctrl', 'alt', 'shift'] if m in held_mods]
+                    captured_mods = [m for m in pb.MODIFIERS if m in held_mods]
                     break
                 time.sleep(0.01)
 
-            keyboard.unhook(hook)
+            pb.unhook(hook)
 
         if captured_key == "esc":
             final_key = self.app.config.data.get(config_key, "")
@@ -593,11 +661,7 @@ class OrganizerGUI:
         self.root.after(0, self.apply_single_hotkey, config_key, final_key, btn)
 
     def release_modifiers(self):
-        try:
-            win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-            win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-            win32api.keybd_event(win32con.VK_SHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
-        except: pass
+        pb.release_modifiers()
 
     def apply_single_hotkey(self, config_key, new_value, btn):
         self.release_modifiers() 
@@ -672,6 +736,7 @@ class OrganizerGUI:
             self.root.deiconify()
             self.root.lift()
             self.root.focus_force() # Force la fenêtre à passer par-dessus les autres !
+            pb.bring_app_to_front()
             self.is_visible = True
 
     def run(self): self.root.mainloop()
@@ -714,7 +779,7 @@ class CharManagerWindow(ctk.CTkToplevel):
         if modifier_value in ("aucun", "nenhum"):
             modifier_value = "none"
         self.var_mod = ctk.StringVar(value=modifier_value)
-        seg_mod = ctk.CTkSegmentedButton(frame_prefix, values=["none", "ctrl", "alt", "shift"], variable=self.var_mod)
+        seg_mod = ctk.CTkSegmentedButton(frame_prefix, values=["none"] + list(pb.MODIFIERS), variable=self.var_mod)
         seg_mod.pack(side="left", padx=5)
         
         self.frame_desc = ctk.CTkFrame(self, fg_color="transparent")
@@ -745,6 +810,7 @@ class CharManagerWindow(ctk.CTkToplevel):
 
     def catch_key(self, dict_key, btn):
         if self.parent.is_listening: return
+        if self.parent.capture_blocked(): return
         self.parent.is_listening = True
         btn.configure(text="...", fg_color="#f39c12")
         threading.Thread(target=self._listen_thread, args=(dict_key, btn), daemon=True).start()
@@ -753,19 +819,30 @@ class CharManagerWindow(ctk.CTkToplevel):
         captured = ""
         def on_key(e):
             nonlocal captured
-            if e.event_type == keyboard.KEY_DOWN:
-                if e.name not in ['alt', 'ctrl', 'shift', 'maj', 'right alt', 'right ctrl', 'left alt', 'left ctrl', 'left shift', 'right shift', 'alt gr', 'menu', 'windows', 'cmd', 'left windows', 'right windows']:
-                    captured = e.name
+            if e.name.startswith(pb.MEDIA_KEY_PREFIX):
+                if e.event_type == pb.KEY_DOWN: self.parent.notify_media_key()
+                return
+            if e.event_type == pb.KEY_DOWN:
+                if e.name not in MODIFIER_KEY_NAMES:
+                    if pb.IS_MAC:
+                        # Les noms macOS sont ceux de la disposition US : on passe par la disposition choisie
+                        captured = self.app.keymaps.scan_to_key_name(e.scan_code) or e.name
+                    else:
+                        captured = e.name
 
-        hook = keyboard.hook(on_key, suppress=True)
+        hook = pb.hook(on_key, suppress=True)
+        deadline = time.monotonic() + CAPTURE_TIMEOUT
         
         while not captured:
-            if win32api.GetAsyncKeyState(0x05) < 0: captured = "mouse4"
-            elif win32api.GetAsyncKeyState(0x06) < 0: captured = "mouse5"
-            elif win32api.GetAsyncKeyState(0x04) < 0: captured = "middle_click"
+            if time.monotonic() > deadline:
+                captured = self.entry_dict.get(dict_key, "") or "esc"  # délai dépassé : inchangé
+                break
+            if pb.is_mouse_pressed("mouse4"): captured = "mouse4"
+            elif pb.is_mouse_pressed("mouse5"): captured = "mouse5"
+            elif pb.is_mouse_pressed("middle_click"): captured = "middle_click"
             time.sleep(0.01)
             
-        keyboard.unhook(hook)
+        pb.unhook(hook)
         time.sleep(0.3) 
         self.app.gui.root.after(0, self.apply_key, dict_key, captured, btn)
 

@@ -77,5 +77,13 @@
   "header_instance_off": "Instance detected",
   "button_yes": "Yes",
   "button_no": "No",
-  "popup_conflict_instance_text": "An instance of DOSOFT is already running!\n\nDo you want to close the old instance to open this one?"
+  "popup_conflict_instance_text": "An instance of DOSOFT is already running!\n\nDo you want to close the old instance to open this one?",
+  "btn_sort_windows_mac": "Sort windows",
+  "tray_sort_mac": "Sort windows",
+  "tooltip_sort_windows_mac": "Stacks the windows and the Cmd+Tab switcher in initiative order",
+  "popup_permissions_title": "🔐 Permission required",
+  "popup_permissions_text": "DOSOFT needs the macOS \"Accessibility\" permission to:\n• read character names (Dofus window titles)\n• switch between windows\n• use global keyboard / mouse shortcuts\n\nSystem Settings → Privacy & Security → Accessibility,\nthen enable DOSOFT. Shortcuts start working automatically.",
+  "btn_open_settings": "Open Settings",
+  "msg_permissions_ok": "✅ Permission granted!",
+  "msg_media_key": "⚠️ Media key: hold fn (e.g. fn + F2)"
 }

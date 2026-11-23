@@ -1,6 +1,6 @@
 import tkinter as tk
 import math
-import win32api
+import platform_backend as pb
 import os
 from PIL import Image, ImageTk
 
@@ -12,7 +12,7 @@ class RadialMenu:
         self.window = tk.Toplevel(parent_root)
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
-        self.window.attributes("-transparentcolor", "magenta")
+        pb.setup_transparent_window(self.window)
         
         self.size = 400 
         self.center = self.size / 2
@@ -22,7 +22,7 @@ class RadialMenu:
         self.accent_color = accent_color
         self.hover_color = hover_color
         
-        self.canvas = tk.Canvas(self.window, width=self.size, height=self.size, bg="magenta", highlightthickness=0)
+        self.canvas = tk.Canvas(self.window, width=self.size, height=self.size, bg=pb.TRANSPARENT_COLOR, highlightthickness=0)
         self.canvas.pack()
         
         self.on_select_callback = on_select_callback
@@ -92,6 +92,7 @@ class RadialMenu:
         pos_y = int(y - self.center)
         self.window.geometry(f"+{pos_x}+{pos_y}")
         self.window.deiconify()
+        pb.raise_overlay(self.window)
         self.is_open = True
         self.hovered_index = -1 
         self.update_hover()
@@ -134,7 +135,7 @@ class RadialMenu:
             skin_img = self.load_image(item['classe'])
             if skin_img: self.canvas.create_image(base_x, img_y, image=skin_img)
             display_text = item['name'][:10] 
-            self.canvas.create_text(base_x, txt_y, text=display_text, fill="#ecf0f1", font=("Segoe UI", 9, "bold"))
+            self.canvas.create_text(base_x, txt_y, text=display_text, fill="#ecf0f1", font=(pb.UI_FONT, 9, "bold"))
             
         self.canvas.create_oval(self.center - self.radius_inner, self.center - self.radius_inner, self.center + self.radius_inner, self.center + self.radius_inner, fill="#1a1a1a", outline="#3d3d3d", width=2)
         if self.center_image: self.canvas.create_image(self.center, self.center, image=self.center_image)
@@ -142,7 +143,7 @@ class RadialMenu:
 
     def update_hover(self):
         if not self.is_open: return
-        x_mouse, y_mouse = win32api.GetCursorPos()
+        x_mouse, y_mouse = pb.get_cursor_pos()
         x_center = self.window.winfo_rootx() + self.center
         y_center = self.window.winfo_rooty() + self.center
         distance = math.hypot(x_mouse - x_center, y_mouse - y_center)

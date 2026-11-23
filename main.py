@@ -1,35 +1,14 @@
 import os
 import sys
-import ctypes
 import threading
-import keyboard
 import time
-import win32api
-import win32con
-import win32gui
-import win32process
-from PIL import Image
-import tkinter as tk
 import customtkinter as ctk
-import pystray
-from pystray import MenuItem as item
-import asyncio
 import requests
-from tkinter import messagebox 
+import platform_backend as pb
 from app_version import CURRENT_VERSION, APP_TITLE
 
-# --- FORCAGE DU DPI AWARENESS (Règle les soucis 4K / Zoom Windows) ---
-try: ctypes.windll.shcore.SetProcessDpiAwareness(2)
-except:
-    try: ctypes.windll.user32.SetProcessDPIAware()
-    except: pass
-
-try:
-    from winrt.windows.ui.notifications.management import UserNotificationListener
-    from winrt.windows.ui.notifications import NotificationKinds
-    WINSDK_AVAILABLE = True
-except ImportError:
-    WINSDK_AVAILABLE = False
+# DPI (Windows) / dossier des ressources (macOS)
+pb.prepare_process()
 
 from config_manager import Config
 from logic import DofusLogic
@@ -39,26 +18,12 @@ from i18n_manager import I18nManager
 from keyboard_layout_manager import KeyboardLayoutManager
 
 
-def try_load_windows_layout(layout_name):
-    layout_map = {
-        "azerty_fr": "0000040C",
-        "qwerty_us": "00000409",
-    }
-    layout_code = layout_map.get(layout_name)
-    if not layout_code:
-        return
-    try:
-        ctypes.windll.user32.LoadKeyboardLayoutW(layout_code, 1 | 0x00000100)
-    except Exception:
-        pass
-
-
 class OrganizerApp:
     def __init__(self):
         self.config = Config()
         self.i18n = I18nManager(self.config.data.get("language", "fr"))
         self.keymaps = KeyboardLayoutManager(self.config.data.get("keyboard_layout", "azerty_fr"))
-        try_load_windows_layout(self.config.data.get("keyboard_layout", "azerty_fr"))
+        pb.load_system_keyboard_layout(self.config.data.get("keyboard_layout", "azerty_fr"))
         self.logic = DofusLogic(self.config)
         self.gui = OrganizerGUI(self)
         self.current_idx = 0
@@ -79,43 +44,103 @@ class OrganizerApp:
         self.setup_system_tray()
         
         self.gui.root.after(1000, self.check_conflicting_software)
+        pb.install_app_handlers(self.gui.root, on_reopen=self.show_main_window, on_quit=self.quit_app)
+        if pb.permissions_supported():
+            self.gui.root.after(1200, self.check_mac_permissions)
 
         if not self.config.data.get("tutorial_done", False):
             self.gui.root.after(800, self.gui.launch_tutorial)
     
     def setup_system_tray(self):
-        icon_path = "logo.ico" 
-        try: image = Image.open(icon_path)
-        except: image = Image.new('RGB', (64, 64), color=(44, 62, 80))
+        sort_label = self.i18n.t("tray_sort_mac", "Trier les fenêtres") if pb.IS_MAC else self.i18n.t("tray_sort", "Trier Barre Windows")
+        menu_items = [
+            (self.i18n.t("tray_toggle", "Afficher/Cacher"), self.toggle_from_tray, True),
+            (sort_label, self.sort_taskbar_from_tray, False),
+            (self.i18n.t("tray_refresh", "Rafraîchir"), self.refresh_from_tray, False),
+            (self.i18n.t("tray_quit", "Quitter"), self.quit_from_tray, False),
+        ]
+        try:
+            self.tray_icon = pb.create_tray(self.gui.root, "DOSOFT", "logo.ico", menu_items)
+        except Exception:
+            self.tray_icon = None
 
-        menu = pystray.Menu(
-            item(self.i18n.t("tray_toggle", "Afficher/Cacher"), self.toggle_from_tray, default=True),
-            item(self.i18n.t("tray_sort", "Trier Barre Windows"), self.sort_taskbar_from_tray),
-            item(self.i18n.t("tray_refresh", "Rafraîchir"), self.refresh_from_tray),
-            item(self.i18n.t("tray_quit", "Quitter"), self.quit_from_tray)
-        )
-        self.tray_icon = pystray.Icon("dosoft_tray", image, "DOSOFT", menu)
-        self.tray_icon.run_detached()
+    def show_main_window(self):
+        self.gui.root.deiconify()
+        self.gui.root.lift()
+        self.gui.root.focus_force()
+        pb.bring_app_to_front()
+        self.gui.is_visible = True
 
-    def toggle_from_tray(self, icon, item):
+    def toggle_from_tray(self):
         def safe_toggle():
             if self.gui.root.state() == 'withdrawn':
-                self.gui.root.deiconify()
-                self.gui.root.lift()
-                self.gui.root.focus_force()
+                self.show_main_window()
             else:
                 self.gui.root.withdraw()
+                self.gui.is_visible = False
         self.gui.root.after(0, safe_toggle)
 
-    def refresh_from_tray(self, icon, item):
+    def refresh_from_tray(self):
         self.gui.root.after(0, self.refresh)
 
-    def sort_taskbar_from_tray(self, icon, item):
+    def sort_taskbar_from_tray(self):
         self.gui.root.after(0, self.gui.trigger_sort_taskbar)
 
-    def quit_from_tray(self, icon, item):
-        self.tray_icon.stop() 
-        self.gui.root.after(0, self.gui.root.destroy) 
+    def quit_from_tray(self):
+        if self.tray_icon is not None:
+            self.tray_icon.stop()
+        if pb.IS_MAC:
+            self.quit_app()
+        else:
+            self.gui.root.after(0, self.gui.root.destroy)
+
+    def check_mac_permissions(self):
+        """macOS : vérifie la permission Accessibilité (raccourcis, focus, titres de fenêtres)."""
+        perms = pb.check_permissions()
+        if all(perms.values()):
+            return
+        self.show_permissions_popup()
+
+    def show_permissions_popup(self):
+        if getattr(self, "_perm_popup", None) is not None and self._perm_popup.winfo_exists():
+            return
+        popup = ctk.CTkToplevel(self.gui.root)
+        self._perm_popup = popup
+        popup.title(self.i18n.t("popup_permissions_title", "🔐 Autorisation requise"))
+        popup.geometry("520x300")
+        popup.attributes("-topmost", True)
+        popup.resizable(False, False)
+
+        msg = self.i18n.t(
+            "popup_permissions_text",
+            "DOSOFT a besoin de l'autorisation « Accessibilité » de macOS pour :\n"
+            "• lire le nom des personnages (titres des fenêtres Dofus)\n"
+            "• passer d'une fenêtre à l'autre\n"
+            "• utiliser les raccourcis clavier / souris globaux\n\n"
+            "Réglages Système → Confidentialité et sécurité → Accessibilité,\n"
+            "puis cochez DOSOFT. Les raccourcis s'activent automatiquement."
+        )
+        ctk.CTkLabel(popup, text=msg, justify="left", font=ctk.CTkFont(size=13)).pack(padx=20, pady=(20, 15))
+        lbl_status = ctk.CTkLabel(popup, text="", font=ctk.CTkFont(size=13, weight="bold"))
+        lbl_status.pack()
+
+        frame_btn = ctk.CTkFrame(popup, fg_color="transparent")
+        frame_btn.pack(fill="x", padx=20, pady=15)
+        ctk.CTkButton(frame_btn, text=self.i18n.t("btn_open_settings", "Ouvrir les Réglages"), fg_color="#27ae60", hover_color="#2ecc71",
+                      command=lambda: pb.open_permission_settings("accessibility")).pack(side="left", expand=True, padx=10)
+        ctk.CTkButton(frame_btn, text=self.i18n.t("settings_close", "Fermer"), fg_color="#7f8c8d", hover_color="#95a5a6",
+                      command=popup.destroy).pack(side="right", expand=True, padx=10)
+
+        def poll():
+            if not popup.winfo_exists():
+                return
+            if all(pb.check_permissions().values()):
+                lbl_status.configure(text=self.i18n.t("msg_permissions_ok", "✅ Autorisation accordée !"), text_color="#2ecc71")
+                self.refresh()
+                popup.after(1500, popup.destroy)
+                return
+            popup.after(1000, poll)
+        poll()
 
     def update_volume(self, volume_val):
         self.config.data["volume_level"] = volume_val
@@ -127,8 +152,7 @@ class OrganizerApp:
         if self.config.data.get("ignore_organizer_warning", False):
             return
         try:
-            output = os.popen('tasklist /FI "IMAGENAME eq organizer.exe" /NH').read().lower()
-            if "organizer.exe" in output:
+            if pb.is_process_running("organizer.exe"):
                 self.show_conflict_popup()
         except Exception: pass
 
@@ -164,7 +188,7 @@ class OrganizerApp:
             if var_ignore.get():
                 self.config.data["ignore_organizer_warning"] = True
                 self.config.save()
-            os.system("taskkill /F /IM organizer.exe /T")
+            pb.kill_process_by_name("organizer.exe")
             popup.destroy()
             self.gui.show_temporary_message(self.i18n.t("msg_organizer_closed", "✅ Organizer fermé avec succès !"), "#2ecc71")
 
@@ -182,52 +206,26 @@ class OrganizerApp:
         
         popup.grab_set()
 
-    def get_vk(self, key_str):
-        key_str = key_str.lower().strip()
-        mapping = {
-            "alt": win32con.VK_MENU, "ctrl": win32con.VK_CONTROL, "shift": win32con.VK_SHIFT,
-            "left_click": 0x01, "right_click": 0x02, "middle_click": 0x04,
-            "mouse4": 0x05, "mouse5": 0x06
-        }
-        if key_str in mapping: return mapping[key_str]
-        
-        scan_code = self.keymaps.key_to_scan(key_str)
-        if scan_code is not None:
-            vk = ctypes.windll.user32.MapVirtualKeyW(scan_code, 1) 
-            if vk: return vk
-            
-        if len(key_str) == 1:
-            vk_scan = ctypes.windll.user32.VkKeyScanW(ord(key_str))
-            vk = vk_scan & 0xFF
-            if vk != 0xFF:
-                return vk
-            return ord(key_str.upper())
-        if key_str.startswith('f') and key_str[1:].isdigit():
-            return 0x6F + int(key_str[1:])
-        return None
-
     def is_hotkey_pressed(self, hk_str):
         if not hk_str: return False
         parts = hk_str.split('+')
         for p in parts:
             token = p.lower().strip()
-            if token in {"ctrl", "alt", "shift"}:
-                vk = self.get_vk(token)
-                if vk is None or win32api.GetAsyncKeyState(vk) >= 0:
+            if token in pb.MODIFIERS:
+                if not pb.is_modifier_pressed(token):
                     return False
                 continue
 
-            mouse_vk = self.get_vk(token) if "click" in token or "mouse" in token else None
-            if mouse_vk is not None:
-                if win32api.GetAsyncKeyState(mouse_vk) >= 0:
+            if token in pb.MOUSE_BUTTONS:
+                if not pb.is_mouse_pressed(token):
                     return False
                 continue
 
             scan_code = self.keymaps.resolve_scan_code(token)
             if scan_code is not None:
-                if not keyboard.is_pressed(scan_code):
+                if not pb.is_pressed(scan_code):
                     return False
-            elif not keyboard.is_pressed(token):
+            elif not pb.is_pressed(token):
                 return False
         return True
 
@@ -268,14 +266,14 @@ class OrganizerApp:
                         if is_retro and cls != "Inconnu": cls = f"{cls}_retro"
                         active_accs.append({'name': acc['name'], 'classe': cls, 'hwnd': acc['hwnd']})
                     
-                    fg_hwnd = win32gui.GetForegroundWindow()
+                    fg_hwnd = pb.get_foreground_window()
                     current_name = None
                     for acc in active_accs:
                         if acc['hwnd'] == fg_hwnd:
                             current_name = acc['name']
                             break
                             
-                    x, y = win32api.GetCursorPos()
+                    x, y = pb.get_cursor_pos()
                     self.gui.root.after(0, self.radial_focus.show, x, y, active_accs, current_name)
                     
                 elif radial_was_open and not is_pressed:
@@ -284,7 +282,7 @@ class OrganizerApp:
 
             # Synchronisation de l'index au clic manuel
             try:
-                fg_hwnd = win32gui.GetForegroundWindow()
+                fg_hwnd = pb.get_foreground_window()
                 cycle_list = self.logic.get_cycle_list()
                 if cycle_list:
                     for index, acc in enumerate(cycle_list):
@@ -319,7 +317,7 @@ class OrganizerApp:
         mods = set()
         main_scan = None
         for p in parts:
-            if p in ['ctrl', 'alt', 'shift']:
+            if p in pb.MODIFIERS:
                 mods.add(p)
                 continue
             main_scan = self.keymaps.resolve_scan_code(p)
@@ -332,27 +330,16 @@ class OrganizerApp:
             self.current_idx = new_idx
 
     def release_modifiers(self):
-        """Force Windows à relâcher les touches Ctrl, Alt et Shift après la saisie."""
-        try:
-            win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-            win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-            win32api.keybd_event(win32con.VK_SHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
-        except: pass
+        """Force le système à relâcher les touches Ctrl, Alt et Shift après la saisie."""
+        pb.release_modifiers()
 
     def restore_modifiers(self, mods):
-        try:
-            if 'alt' in mods: win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-            if 'ctrl' in mods: win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-            if 'shift' in mods: win32api.keybd_event(win32con.VK_SHIFT, 0, 0, 0)
-        except: pass
+        pb.restore_modifiers(mods)
 
     def global_hook_listener(self, event):
-        if event.event_type != keyboard.KEY_DOWN: return
+        if event.event_type != pb.KEY_DOWN: return
         
-        current_mods = set()
-        if win32api.GetAsyncKeyState(win32con.VK_CONTROL) < 0: current_mods.add('ctrl')
-        if win32api.GetAsyncKeyState(win32con.VK_MENU) < 0: current_mods.add('alt')
-        if win32api.GetAsyncKeyState(win32con.VK_SHIFT) < 0: current_mods.add('shift')
+        current_mods = set(pb.get_pressed_modifiers())
         
         key = (frozenset(current_mods), event.scan_code)
         if key in self.hotkey_actions:
@@ -364,7 +351,7 @@ class OrganizerApp:
             threading.Thread(target=safe_execute, daemon=True).start()
 
     def setup_hotkeys(self):
-        keyboard.unhook_all()
+        pb.unhook_all()
         self.hotkey_actions = {} 
         self.mouse_hotkeys = {} 
         self.mouse_states = {}  
@@ -391,7 +378,7 @@ class OrganizerApp:
             if cfg.get("toggle_app_key"): self.register_action(cfg["toggle_app_key"], lambda: self.gui.root.after(0, self.gui.toggle_visibility))
             if cfg.get('refresh_key'): self.register_action(cfg['refresh_key'], self.refresh)
             if cfg.get('quit_key'):    self.register_action(cfg['quit_key'],   self.quit_app) 
-            keyboard.hook(self.global_hook_listener)
+            pb.hook(self.global_hook_listener)
         except Exception: pass
 
     def refresh(self): 
@@ -421,206 +408,35 @@ class OrganizerApp:
         self.logic.focus_window(cycle_list[self.current_idx]['hwnd'])
 
     def quit_app(self):
-        my_pid = os.getpid()
-        os.system(f"taskkill /F /PID {my_pid} /T")
+        if getattr(self, "tray_icon", None) is not None:
+            try: self.tray_icon.stop()
+            except Exception: pass
+        pb.force_quit_self()
 
     def start_notification_listener(self):
-        if not WINSDK_AVAILABLE:
-            return
+        mode = self.config.data.get("notif_api_mode", "v2")
+        pb.start_notification_listener(mode, self.handle_notification_texts)
 
-        def run_async_loop():
-            try:
-                import pythoncom
-                pythoncom.CoInitializeEx(0, pythoncom.COINIT_MULTITHREADED)
-            except Exception:
-                pass
+    def handle_notification_texts(self, texts):
+        """Auto-Focus Rétro : focus la page du personnage cité dans la notification.
 
-            mode = self.config.data.get("notif_api_mode", "v2")
-            if mode == "v1":
-                engine = self.poll_notifications
-            elif mode == "v3":
-                engine = self._poll_notifications_v3
-            else:
-                engine = self._poll_notifications_v2
-
-            while True:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(engine())
-                except Exception:
-                    pass
-                finally:
-                    try:
-                        loop.close()
-                    except Exception:
-                        pass
-                time.sleep(3)
-
-        threading.Thread(target=run_async_loop, daemon=True).start()
-
-    async def poll_notifications(self):
-        while True:
-            try:
-                listener = UserNotificationListener.current
-                access = await listener.request_access_async()
-                if access != 1:
-                    await asyncio.sleep(5)
-                    continue
-
-                seen_ids = set()
-                first_pass = True
-
-                while True:
-                    try:
-                        is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
-                        is_autofocus_on = self.config.data.get("auto_focus_retro", False)
-                        notifs = await listener.get_notifications_async(NotificationKinds.TOAST)
-                        current_ids = set()
-
-                        for n in notifs:
-                            current_ids.add(n.id)
-                            if n.id not in seen_ids:
-                                seen_ids.add(n.id)
-                                if not first_pass and is_retro and is_autofocus_on:
-                                    try:
-                                        binding = n.notification.visual.bindings[0]
-                                        texts = [t.text for t in binding.get_text_elements()]
-                                        for ligne in texts:
-                                            if " - Dofus Retro" in ligne:
-                                                pseudo = ligne.split(" - ")[0].strip()
-                                                cycle_list = self.logic.get_cycle_list()
-                                                for index, acc in enumerate(cycle_list):
-                                                    if acc['name'] == pseudo:
-                                                        self.gui.root.after(0, self.logic.focus_window, acc['hwnd'])
-                                                        self.current_idx = index
-                                                        break
-                                                break
-                                    except Exception:
-                                        pass
-
-                        seen_ids.intersection_update(current_ids)
-                        first_pass = False
-                    except Exception:
-                        pass
-                    await asyncio.sleep(0.5)
-            except Exception:
-                pass
-            await asyncio.sleep(3)
-
-    # ==========================================
-    # MOTEUR V2 : AVEC NETTOYAGE NOTIFICATIONS
-    # ==========================================
-    async def _poll_notifications_v2(self):
-        while True:
-            try:
-                listener = UserNotificationListener.current
-                access = await listener.request_access_async()
-                if access != 1:
-                    await asyncio.sleep(5)
-                    continue
-
-                seen_ids = set()
-                first_pass = True
-
-                async def remove_notif_delayed(notif_id):
-                    await asyncio.sleep(1.0)
-                    try:
-                        listener.remove_notification(notif_id)
-                    except Exception:
-                        pass
-
-                while True:
-                    try:
-                        is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
-                        is_autofocus_on = self.config.data.get("auto_focus_retro", False)
-                        notifs = await listener.get_notifications_async(NotificationKinds.TOAST)
-                        current_ids = set()
-
-                        for n in notifs:
-                            current_ids.add(n.id)
-                            if n.id not in seen_ids:
-                                seen_ids.add(n.id)
-                                if not first_pass and is_retro and is_autofocus_on:
-                                    try:
-                                        binding = n.notification.visual.bindings[0]
-                                        texts = [t.text for t in binding.get_text_elements()]
-                                        is_dofus_notif = False
-                                        for ligne in texts:
-                                            if " - Dofus Retro" in ligne:
-                                                is_dofus_notif = True
-                                                pseudo = ligne.split(" - ")[0].strip()
-                                                cycle_list = self.logic.get_cycle_list()
-                                                for index, acc in enumerate(cycle_list):
-                                                    if acc['name'] == pseudo:
-                                                        self.gui.root.after(0, self.logic.focus_window, acc['hwnd'])
-                                                        self.current_idx = index
-                                                        break
-                                                break
-                                        if is_dofus_notif:
-                                            asyncio.create_task(remove_notif_delayed(n.id))
-                                    except Exception:
-                                        pass
-
-                        seen_ids.intersection_update(current_ids)
-                        first_pass = False
-                    except Exception:
-                        pass
-                    await asyncio.sleep(0.5)
-            except Exception:
-                pass
-            await asyncio.sleep(3)
-
-    # ==========================================
-    # MOTEUR V3 : POLLING RAPIDE SANS NETTOYAGE
-    # ==========================================
-    async def _poll_notifications_v3(self):
-        while True:
-            try:
-                listener = UserNotificationListener.current
-                access = await listener.request_access_async()
-                if access != 1:
-                    await asyncio.sleep(5)
-                    continue
-
-                seen_ids = set()
-                first_pass = True
-
-                while True:
-                    is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
-                    is_autofocus_on = self.config.data.get("auto_focus_retro", False)
-                    try:
-                        notifs = await listener.get_notifications_async(NotificationKinds.TOAST)
-                        current_ids = {n.id for n in notifs}
-
-                        for n in notifs:
-                            if n.id not in seen_ids:
-                                seen_ids.add(n.id)
-                                if not first_pass and is_retro and is_autofocus_on:
-                                    try:
-                                        binding = n.notification.visual.bindings[0]
-                                        for t in binding.get_text_elements():
-                                            if " - Dofus Retro" in t.text:
-                                                pseudo = t.text.split(" - ")[0].strip()
-                                                for index, acc in enumerate(self.logic.get_cycle_list()):
-                                                    if acc['name'] == pseudo:
-                                                        self.gui.root.after(0, self.logic.focus_window, acc['hwnd'])
-                                                        self.current_idx = index
-                                                        break
-                                                break
-                                    except Exception:
-                                        pass
-
-                        seen_ids.intersection_update(current_ids)
-                    except Exception:
-                        pass
-
-                    first_pass = False
-                    await asyncio.sleep(0.3)
-            except Exception:
-                pass
-            await asyncio.sleep(3)
-                
+        Retourne True si la notification provient de Dofus Rétro.
+        """
+        is_retro = self.config.data.get("game_version", "Unity") == "Rétro"
+        is_autofocus_on = self.config.data.get("auto_focus_retro", False)
+        if not (is_retro and is_autofocus_on):
+            return False
+        for ligne in texts:
+            if " - Dofus Retro" in ligne:
+                pseudo = ligne.split(" - ")[0].strip()
+                cycle_list = self.logic.get_cycle_list()
+                for index, acc in enumerate(cycle_list):
+                    if acc['name'] == pseudo:
+                        self.gui.root.after(0, self.logic.focus_window, acc['hwnd'])
+                        self.current_idx = index
+                        break
+                return True
+        return False
 
 VERSION_URL = "https://raw.githubusercontent.com/LuframeCode/Dosoft/main/version.json"
 
@@ -656,65 +472,18 @@ def check_version(i18n=None):
                 "version_update_required_text",
                 "Une mise à jour est requise pour utiliser le logiciel.\n\nVotre version : {current_version}\nVersion disponible : {latest_version}\n\nMise à jour dispo sur Dosoft.fr"
             ).format(current_version=CURRENT_VERSION, latest_version=latest_version)
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                message,
-                i18n.t("version_update_required_title", "Mise à jour requise"),
-                0x10
-            )
+            pb.show_error_box(i18n.t("version_update_required_title", "Mise à jour requise"), message)
     except requests.RequestException:
-        ctypes.windll.user32.MessageBoxW(
-            0,
-            i18n.t("version_network_error_text", "Impossible de vérifier la version."),
+        pb.show_error_box(
             i18n.t("version_network_error_title", "Erreur réseau"),
-            0x10
+            i18n.t("version_network_error_text", "Impossible de vérifier la version.")
         )
         
 
-def is_admin():
-    try: return ctypes.windll.shell32.IsUserAnAdmin()
-    except: return False
-
-def run_as_admin():
-    if getattr(sys, 'frozen', False):
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv[1:]), None, 1)
-    else:
-        script = os.path.abspath(sys.argv[0])
-        params = ' '.join([f'"{arg}"' for arg in sys.argv[1:]])
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, f'"{script}" {params}', None, 1)
-
-def handle_multiple_instances():
-    i18n = I18nManager(Config().data.get("language", "fr"))
-    mutex_name = "DOSOFT_SINGLE_INSTANCE_MUTEX"
-    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
-    if ctypes.windll.kernel32.GetLastError() == 183:
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        rep = messagebox.askyesno(i18n.t("header_instace_off", "Instance détectée"),i18n.t("popup_conflict_instance_text","Une instance de DOSOFT est déjà en cours d'exécution !\n\nVoulez-vous fermer l'ancienne instance pour ouvrir celle-ci ?"))
-        if rep:
-           
-            hwnd = win32gui.FindWindow(None, APP_TITLE)
-            if hwnd:
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                try:
-                    handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
-                    ctypes.windll.kernel32.TerminateProcess(handle, 0)
-                    ctypes.windll.kernel32.CloseHandle(handle)
-                except: pass
-            time.sleep(0.5) 
-            root.destroy()
-        else:
-            root.destroy()
-            sys.exit(0)
-    return mutex
-
 def start_application():
-    if not is_admin():
-        run_as_admin()
-        sys.exit() 
-    cfg = Config()       
-    _app_mutex = handle_multiple_instances()
+    pb.ensure_privileges()  # Windows : relance en admin / macOS : demande Accessibilité
+    cfg = Config()
+    _app_mutex = pb.acquire_single_instance(I18nManager(cfg.data.get("language", "fr")), APP_TITLE)
     check_version(I18nManager(cfg.data.get("language", "fr")))
 
     app = OrganizerApp()

@@ -19,6 +19,8 @@ SORT_LABEL_DEFAULT = "Trier les fenêtres" if pb.IS_MAC else "Trier Barre Window
 MODIFIER_KEY_NAMES = ['alt', 'ctrl', 'shift', 'maj', 'right alt', 'right ctrl', 'left alt', 'left ctrl', 'left shift', 'right shift', 'alt gr', 'menu', 'windows', 'cmd', 'left windows', 'right windows']
 if pb.IS_MAC:
     MODIFIER_KEY_NAMES += ['caps lock', 'fn']
+# Durée max d'attente d'une touche : le bouton ne reste jamais bloqué sur « ... »
+CAPTURE_TIMEOUT = 15
 
 
 ctk.set_appearance_mode("Dark")
@@ -544,8 +546,21 @@ class OrganizerGUI:
         btn_x.grid(row=row, column=col_offset+2, padx=(0, 10))
         self.bind_i18n_tooltip(btn_x, "tooltip_clear_shortcut", "Effacer le raccourci")
 
+    def capture_blocked(self):
+        """macOS : sans l'autorisation Accessibilité aucune touche n'est reçue."""
+        if pb.permissions_supported() and not all(pb.check_permissions().values()):
+            self.app.show_permissions_popup()
+            return True
+        return False
+
+    def notify_media_key(self):
+        """Touche multimédia (luminosité, volume…) pressée pendant une capture."""
+        self.root.after(0, self.show_temporary_message, self.app.i18n.t(
+            "msg_media_key", "⚠️ Touche multimédia : maintenez fn (ex. fn + F2)"), "#f39c12")
+
     def catch_key(self, config_key, btn, allow_mouse=False):
         if self.is_listening: return
+        if self.capture_blocked(): return
         self.is_listening = True
         mods_now = pb.get_pressed_modifiers()
         btn.configure(text="...", fg_color="#f39c12")
@@ -568,6 +583,9 @@ class OrganizerGUI:
             done_event = _threading.Event()
             def on_key_hook(e):
                 nonlocal captured_key, captured_mods
+                if e.name.startswith(pb.MEDIA_KEY_PREFIX):
+                    if e.event_type == pb.KEY_DOWN: self.notify_media_key()
+                    return
                 if e.event_type == pb.KEY_DOWN:
                     if e.name not in MODIFIER_KEY_NAMES:
                         current_mods = get_current_mods()
@@ -580,7 +598,8 @@ class OrganizerGUI:
                             captured_key = e.name
                         done_event.set()
             hook = pb.hook(on_key_hook, suppress=True)
-            done_event.wait()
+            if not done_event.wait(CAPTURE_TIMEOUT):
+                captured_key = "esc"  # délai dépassé : on garde l'ancienne touche
             pb.unhook(hook)
         else:
             held_mods = set(mods_before_click)
@@ -596,6 +615,9 @@ class OrganizerGUI:
 
             def on_key(e):
                 nonlocal captured_key, captured_mods
+                if e.name.startswith(pb.MEDIA_KEY_PREFIX):
+                    if e.event_type == pb.KEY_DOWN: self.notify_media_key()
+                    return
                 if e.name in MOD_MAP:
                     if MOD_MAP[e.name] is None:
                         return
@@ -612,8 +634,12 @@ class OrganizerGUI:
                             captured_key = mapped_key
                         else: captured_key = e.name
             hook = pb.hook(on_key, suppress=True)
+            deadline = time.monotonic() + CAPTURE_TIMEOUT
 
             while not captured_key:
+                if time.monotonic() > deadline:
+                    captured_key, captured_mods = "esc", []  # délai dépassé : on garde l'ancienne touche
+                    break
                 for button in pb.MOUSE_BUTTONS:
                     if pb.is_mouse_pressed(button):
                         captured_key = button
@@ -784,6 +810,7 @@ class CharManagerWindow(ctk.CTkToplevel):
 
     def catch_key(self, dict_key, btn):
         if self.parent.is_listening: return
+        if self.parent.capture_blocked(): return
         self.parent.is_listening = True
         btn.configure(text="...", fg_color="#f39c12")
         threading.Thread(target=self._listen_thread, args=(dict_key, btn), daemon=True).start()
@@ -792,6 +819,9 @@ class CharManagerWindow(ctk.CTkToplevel):
         captured = ""
         def on_key(e):
             nonlocal captured
+            if e.name.startswith(pb.MEDIA_KEY_PREFIX):
+                if e.event_type == pb.KEY_DOWN: self.parent.notify_media_key()
+                return
             if e.event_type == pb.KEY_DOWN:
                 if e.name not in MODIFIER_KEY_NAMES:
                     if pb.IS_MAC:
@@ -801,8 +831,12 @@ class CharManagerWindow(ctk.CTkToplevel):
                         captured = e.name
 
         hook = pb.hook(on_key, suppress=True)
+        deadline = time.monotonic() + CAPTURE_TIMEOUT
         
         while not captured:
+            if time.monotonic() > deadline:
+                captured = self.entry_dict.get(dict_key, "") or "esc"  # délai dépassé : inchangé
+                break
             if pb.is_mouse_pressed("mouse4"): captured = "mouse4"
             elif pb.is_mouse_pressed("mouse5"): captured = "mouse5"
             elif pb.is_mouse_pressed("middle_click"): captured = "middle_click"

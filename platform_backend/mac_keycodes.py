@@ -123,3 +123,9 @@ def scan_for_mac_keycode(keycode):
 
 def name_for_mac_keycode(keycode):
     return MAC_KEY_NAMES.get(keycode)
+
+
+# Touches spéciales de la rangée du haut des claviers Mac récents (sans fn) :
+# Mission Control (160), Launchpad (131), Spotlight (177), Dictée (176),
+# Ne pas déranger (178), Emoji/Globe (179).
+MAC_SPECIAL_FN_KEYCODES = {160, 131, 177, 176, 178, 179}

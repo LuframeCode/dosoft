@@ -25,7 +25,7 @@ import Quartz
 import ApplicationServices as AX
 from AppKit import (
     NSApplication, NSWorkspace, NSRunningApplication, NSStatusBar, NSMenu, NSMenuItem,
-    NSImage, NSVariableStatusItemLength, NSApplicationActivationPolicyRegular,
+    NSImage, NSVariableStatusItemLength, NSApplicationActivationPolicyRegular, NSEvent,
 )
 from Foundation import NSObject, NSBundle, NSURL
 
@@ -33,7 +33,7 @@ from . import mac_keycodes as kc
 from . import mac_notifications
 
 __all__ = [
-    "PLATFORM_NAME", "MODIFIERS", "MOUSE_BUTTONS", "KEY_DOWN", "KEY_UP", "UI_FONT",
+    "PLATFORM_NAME", "MEDIA_KEY_PREFIX", "MODIFIERS", "MOUSE_BUTTONS", "KEY_DOWN", "KEY_UP", "UI_FONT",
     "TRANSPARENT_COLOR", "NOTIF_ENGINES",
     "hook", "unhook", "unhook_all", "is_pressed", "name_to_scan",
     "get_pressed_modifiers", "is_modifier_pressed", "is_mouse_pressed",
@@ -68,6 +68,9 @@ _MOD_FLAGS = {
 }
 _MOUSE_BUTTON_NUM = {"left_click": 0, "right_click": 1, "middle_click": 2, "mouse4": 3, "mouse5": 4}
 _HID_STATE = Quartz.kCGEventSourceStateHIDSystemState
+_SYSTEM_DEFINED = 14  # NSEventTypeSystemDefined (touches multimédia)
+MEDIA_KEY_PREFIX = "media:"
+MEDIA_SCAN_BASE = 0x20000
 
 
 # ===========================================================================
@@ -113,33 +116,65 @@ class _InputMonitor:
         for t in (Quartz.kCGEventKeyDown, Quartz.kCGEventKeyUp, Quartz.kCGEventFlagsChanged,
                   Quartz.kCGEventLeftMouseDown, Quartz.kCGEventLeftMouseUp,
                   Quartz.kCGEventRightMouseDown, Quartz.kCGEventRightMouseUp,
-                  Quartz.kCGEventOtherMouseDown, Quartz.kCGEventOtherMouseUp):
+                  Quartz.kCGEventOtherMouseDown, Quartz.kCGEventOtherMouseUp,
+                  _SYSTEM_DEFINED):
             mask |= Quartz.CGEventMaskBit(t)
         tap = Quartz.CGEventTapCreate(Quartz.kCGSessionEventTap, Quartz.kCGHeadInsertEventTap,
                                       Quartz.kCGEventTapOptionDefault, mask, self._callback_ref, None)
         if tap:
             return tap, False
-        tap = Quartz.CGEventTapCreate(Quartz.kCGSessionEventTap, Quartz.kCGHeadInsertEventTap,
-                                      Quartz.kCGEventTapOptionListenOnly, mask, self._callback_ref, None)
-        if tap:
-            return tap, True
+        # Repli en écoute seule UNIQUEMENT si « Surveillance de l'entrée » est accordée :
+        # sinon macOS crée bien le tap mais le laisse désactivé (aucune touche reçue).
+        try:
+            listen_ok = bool(Quartz.CGPreflightListenEventAccess())
+        except Exception:
+            listen_ok = False
+        if listen_ok:
+            tap = Quartz.CGEventTapCreate(Quartz.kCGSessionEventTap, Quartz.kCGHeadInsertEventTap,
+                                          Quartz.kCGEventTapOptionListenOnly, mask, self._callback_ref, None)
+            if tap:
+                return tap, True
         return None, False
 
+    @staticmethod
+    def _ax_trusted():
+        try:
+            return bool(AX.AXIsProcessTrusted())
+        except Exception:
+            return False
+
     def _run(self):
-        # On réessaie tant que la permission Accessibilité n'est pas accordée :
-        # les raccourcis se mettent à fonctionner dès qu'elle l'est, sans redémarrage.
+        """Crée le tap puis le surveille : dès que l'autorisation Accessibilité est
+        accordée (même après le lancement), un tap complet est (re)créé, sans
+        redémarrer DOSOFT. Un tap désactivé par macOS est réactivé ou recréé."""
+        run_loop = Quartz.CFRunLoopGetCurrent()
         while True:
             tap, listen_only = self._create_tap()
-            if tap:
-                break
-            time.sleep(2.0)
-        self._tap = tap
-        self.listen_only = listen_only
-        self.active = True
-        source = Quartz.CFMachPortCreateRunLoopSource(None, tap, 0)
-        Quartz.CFRunLoopAddSource(Quartz.CFRunLoopGetCurrent(), source, Quartz.kCFRunLoopCommonModes)
-        Quartz.CGEventTapEnable(tap, True)
-        Quartz.CFRunLoopRun()
+            if not tap:
+                self.active = False
+                time.sleep(1.0)
+                continue
+            source = Quartz.CFMachPortCreateRunLoopSource(None, tap, 0)
+            Quartz.CFRunLoopAddSource(run_loop, source, Quartz.kCFRunLoopCommonModes)
+            Quartz.CGEventTapEnable(tap, True)
+            self._tap = tap
+            self.listen_only = listen_only
+            self.active = True
+            while True:
+                Quartz.CFRunLoopRunInMode(Quartz.kCFRunLoopDefaultMode, 1.0, False)
+                if not Quartz.CGEventTapIsEnabled(tap):
+                    Quartz.CGEventTapEnable(tap, True)
+                upgrade = listen_only and self._ax_trusted()
+                if upgrade or not Quartz.CGEventTapIsEnabled(tap):
+                    break
+            # Reconstruction : on retire l'ancien tap avant d'en créer un nouveau
+            self.active = False
+            self._tap = None
+            Quartz.CFRunLoopRemoveSource(run_loop, source, Quartz.kCFRunLoopCommonModes)
+            Quartz.CFMachPortInvalidate(tap)
+            self._down_keys.clear()
+            self._down_buttons.clear()
+            time.sleep(0.5)
 
     # ---- callback du tap ---------------------------------------------------
     def _callback(self, proxy, event_type, event, refcon):
@@ -157,6 +192,9 @@ class _InputMonitor:
             if event_type in (Quartz.kCGEventLeftMouseUp, Quartz.kCGEventRightMouseUp, Quartz.kCGEventOtherMouseUp):
                 self._down_buttons.discard(Quartz.CGEventGetIntegerValueField(event, Quartz.kCGMouseEventButtonNumber))
                 return event
+
+            if event_type == _SYSTEM_DEFINED:
+                return self._media_event(event)
 
             keycode = Quartz.CGEventGetIntegerValueField(event, Quartz.kCGKeyboardEventKeycode)
             flags = Quartz.CGEventGetFlags(event)
@@ -181,24 +219,49 @@ class _InputMonitor:
             else:
                 return event
 
+            if keycode in kc.MAC_SPECIAL_FN_KEYCODES:
+                # Mission Control, Spotlight, Dictée… (rangée du haut sans fn)
+                ev = KeyEvent(ev_type, MEDIA_SCAN_BASE + keycode, f"{MEDIA_KEY_PREFIX}{keycode}", keycode)
+                return self._dispatch(ev, event)
+
             scan = kc.scan_for_mac_keycode(keycode)
             if scan is None:
                 scan = 0x10000 + keycode  # touche inconnue : scan code unique hors plage PC
             ev = KeyEvent(ev_type, scan, kc.name_for_mac_keycode(keycode) or f"key{keycode}", keycode)
-
-            suppress = False
-            with self._lock:
-                hooks = list(self._hooks.values())
-            for cb, sup in hooks:
-                try:
-                    cb(ev)
-                except Exception:
-                    pass
-                suppress = suppress or sup
-            if suppress and not self.listen_only:
-                return None
+            return self._dispatch(ev, event)
         except Exception:
             pass
+        return event
+
+    def _media_event(self, event):
+        """Touches multimédia (luminosité, volume, lecture…) : la rangée du haut
+        d'un clavier Mac sans fn. Elles ne sont jamais converties en F1-F12 (le
+        volume + deviendrait F12 = Quitter), mais signalées pendant une capture."""
+        try:
+            ns = NSEvent.eventWithCGEvent_(event)
+            if ns is None or ns.subtype() != 8:  # NX_SUBTYPE_AUX_CONTROL_BUTTONS
+                return event
+            data = ns.data1()
+            key_type = (data & 0xFFFF0000) >> 16
+            is_down = ((data & 0xFF00) >> 8) == 0x0A
+            ev = KeyEvent(KEY_DOWN if is_down else KEY_UP, MEDIA_SCAN_BASE + 0x1000 + key_type,
+                          f"{MEDIA_KEY_PREFIX}{key_type}", None)
+            return self._dispatch(ev, event)
+        except Exception:
+            return event
+
+    def _dispatch(self, ev, event):
+        suppress = False
+        with self._lock:
+            hooks = list(self._hooks.values())
+        for cb, sup in hooks:
+            try:
+                cb(ev)
+            except Exception:
+                pass
+            suppress = suppress or sup
+        if suppress and not self.listen_only:
+            return None
         return event
 
     # ---- API ---------------------------------------------------------------

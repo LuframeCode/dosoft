@@ -84,5 +84,6 @@
   "popup_permissions_title": "🔐 Permissão necessária",
   "popup_permissions_text": "O DOSOFT precisa da permissão \"Acessibilidade\" do macOS para:\n• ler o nome dos personagens (títulos das janelas do Dofus)\n• alternar entre as janelas\n• usar os atalhos globais de teclado / mouse\n\nAjustes do Sistema → Privacidade e Segurança → Acessibilidade,\ne ative o DOSOFT. Os atalhos passam a funcionar automaticamente.",
   "btn_open_settings": "Abrir Ajustes",
-  "msg_permissions_ok": "✅ Permissão concedida!"
+  "msg_permissions_ok": "✅ Permissão concedida!",
+  "msg_media_key": "⚠️ Tecla multimídia: segure fn (ex. fn + F2)"
 }

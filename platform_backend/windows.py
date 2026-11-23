@@ -18,7 +18,7 @@ import win32gui
 import win32process
 
 __all__ = [
-    "PLATFORM_NAME", "MODIFIERS", "MOUSE_BUTTONS", "KEY_DOWN", "KEY_UP", "UI_FONT",
+    "PLATFORM_NAME", "MEDIA_KEY_PREFIX", "MODIFIERS", "MOUSE_BUTTONS", "KEY_DOWN", "KEY_UP", "UI_FONT",
     "TRANSPARENT_COLOR", "NOTIF_ENGINES",
     "hook", "unhook", "unhook_all", "is_pressed", "name_to_scan",
     "get_pressed_modifiers", "is_modifier_pressed", "is_mouse_pressed",
@@ -35,6 +35,7 @@ __all__ = [
 ]
 
 PLATFORM_NAME = "windows"
+MEDIA_KEY_PREFIX = "media:"  # jamais émis sous Windows
 MODIFIERS = ("ctrl", "alt", "shift")
 MOUSE_BUTTONS = ("left_click", "right_click", "middle_click", "mouse4", "mouse5")
 KEY_DOWN = keyboard.KEY_DOWN

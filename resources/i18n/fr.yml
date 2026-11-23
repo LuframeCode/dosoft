@@ -84,5 +84,6 @@
   "popup_permissions_title": "🔐 Autorisation requise",
   "popup_permissions_text": "DOSOFT a besoin de l'autorisation « Accessibilité » de macOS pour :\n• lire le nom des personnages (titres des fenêtres Dofus)\n• passer d'une fenêtre à l'autre\n• utiliser les raccourcis clavier / souris globaux\n\nRéglages Système → Confidentialité et sécurité → Accessibilité,\npuis cochez DOSOFT. Les raccourcis s'activent automatiquement.",
   "btn_open_settings": "Ouvrir les Réglages",
-  "msg_permissions_ok": "✅ Autorisation accordée !"
+  "msg_permissions_ok": "✅ Autorisation accordée !",
+  "msg_media_key": "⚠️ Touche multimédia : maintenez fn (ex. fn + F2)"
 }

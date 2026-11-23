@@ -3,7 +3,7 @@
 #  DOSOFT - Compilation macOS (bundle .app + image disque .dmg)
 #  Prérequis : macOS 11+, Python 3.10-3.13 avec Tkinter
 #  Usage     : ./build_mac.sh
-#  Variables : PYTHON=python3.12  DOSOFT_CODESIGN_IDENTITY="Developer ID Application: ..."
+#  Variables : PYTHON=python3.12  DOSOFT_CODESIGN_IDENTITY="..."  (sinon certificat « Dosoft Dev »)
 # ============================================================
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -55,12 +55,28 @@ rm -rf "dist/$APP_NAME" "dist/$APP_NAME.app"
 "$VENV/bin/python" -m PyInstaller --noconfirm --clean --distpath dist --workpath build/pyinstaller Dosoft-mac.spec
 
 # --- Signature ---
-# Signature ad hoc par défaut. macOS rattache l'autorisation « Accessibilité » à la
-# signature : avec une signature ad hoc, il faut ré-autoriser DOSOFT après chaque build.
-IDENTITY="${DOSOFT_CODESIGN_IDENTITY:--}"
+# macOS rattache l'autorisation « Accessibilité » à la signature de l'app.
+# Ordre de choix : DOSOFT_CODESIGN_IDENTITY, sinon le certificat local « Dosoft Dev »
+# (créé par ./create_mac_cert.sh, identité stable : l'autorisation survit aux builds),
+# sinon signature ad hoc (DOSOFT devra être ré-autorisé après chaque build).
+CERT_NAME="${DOSOFT_CERT_NAME:-Dosoft Dev}"
+IDENTITY="${DOSOFT_CODESIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+    # Empreinte SHA-1 plutôt que le nom : évite l'ambiguïté en cas de doublon
+    IDENTITY=$(security find-identity -p codesigning 2>/dev/null \
+        | awk -v n="\"$CERT_NAME\"" 'index($0, n) { print $2; exit }')
+    if [ -n "$IDENTITY" ]; then
+        echo "[*] Certificat local « $CERT_NAME » trouvé."
+    else
+        IDENTITY="-"
+        echo "[!] Pas de certificat « $CERT_NAME » : signature ad hoc."
+        echo "    Lancez ./create_mac_cert.sh une fois pour garder l'autorisation entre les builds."
+    fi
+fi
 echo "[*] Signature ($IDENTITY)..."
 codesign --force --deep --sign "$IDENTITY" "dist/$APP_NAME.app"
 codesign --verify --deep "dist/$APP_NAME.app"
+codesign -d -r- "dist/$APP_NAME.app" 2>&1 | sed -n 's/^designated => /[*] Identité macOS : /p'
 
 # --- Image disque ---
 echo "[*] Création du DMG..."

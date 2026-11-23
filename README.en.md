@@ -35,7 +35,7 @@ python main.py
 ```
 
 ### "Accessibility" permission
-On first launch, macOS asks for the **Accessibility** permission (System Settings → Privacy & Security → Accessibility → enable DOSOFT). It is required to read character names, switch windows, catch shortcuts and read Retro notifications. Shortcuts start working as soon as it is granted, without restarting. With the script's ad hoc signature, DOSOFT must be re-authorized after each new build (or sign it with `DOSOFT_CODESIGN_IDENTITY`).
+On first launch, macOS asks for the **Accessibility** permission (System Settings → Privacy & Security → Accessibility → enable DOSOFT). It is required to read character names, switch windows, catch shortcuts and read Retro notifications. Shortcuts start working as soon as it is granted, without restarting. To keep the permission across new builds, create a local signing certificate once with `./create_mac_cert.sh`: `build_mac.sh` then uses it automatically. Without it, the app is signed "ad hoc" and must be re-authorized after each build (remove the old DOSOFT entry from the Accessibility list, or run `tccutil reset Accessibility fr.dosoft.app`). Another identity can be forced with `DOSOFT_CODESIGN_IDENTITY`.
 
 ### Differences from Windows
 - Settings are stored in `~/Library/Application Support/Dosoft/settings.json`.

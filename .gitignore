@@ -6,3 +6,4 @@ dist
 Dosoft.spec
 installer_output
 .venv-mac/
+.DS_Store

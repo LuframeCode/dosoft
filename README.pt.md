@@ -35,7 +35,7 @@ python main.py
 ```
 
 ### Permissão "Acessibilidade"
-Na primeira execução, o macOS pede a permissão de **Acessibilidade** (Ajustes do Sistema → Privacidade e Segurança → Acessibilidade → ativar o DOSOFT). Ela é necessária para ler o nome dos personagens, alternar janelas, capturar atalhos e ler as notificações do Retro. Os atalhos passam a funcionar assim que a permissão é concedida, sem reiniciar. Com a assinatura ad hoc do script, é preciso autorizar o DOSOFT novamente após cada novo build (ou assinar com `DOSOFT_CODESIGN_IDENTITY`).
+Na primeira execução, o macOS pede a permissão de **Acessibilidade** (Ajustes do Sistema → Privacidade e Segurança → Acessibilidade → ativar o DOSOFT). Ela é necessária para ler o nome dos personagens, alternar janelas, capturar atalhos e ler as notificações do Retro. Os atalhos passam a funcionar assim que a permissão é concedida, sem reiniciar. Para manter a permissão entre builds, crie uma vez um certificado de assinatura local com `./create_mac_cert.sh`: o `build_mac.sh` passa a usá-lo automaticamente. Sem ele, o app é assinado "ad hoc" e precisa ser autorizado novamente após cada build (remova a entrada antiga do DOSOFT da lista de Acessibilidade, ou execute `tccutil reset Accessibility fr.dosoft.app`). Outra identidade pode ser imposta com `DOSOFT_CODESIGN_IDENTITY`.
 
 ### Diferenças em relação ao Windows
 - As configurações ficam em `~/Library/Application Support/Dosoft/settings.json`.
